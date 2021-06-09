@@ -1,0 +1,5 @@
+/.idea
+/server/config/
+/client/.nuxt/
+/client/node_modules/
+/node_modules/
