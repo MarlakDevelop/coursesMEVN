@@ -1,19 +1,22 @@
 <template>
   <div>
-    <p class="text-h4 mt-6 pt-6">
-      Курс программирование на языке Python
+    <p class="text-h4 mt-6 pt-6" v-if="!!courseName">
+      {{ courseName }}
     </p>
-    <p class="text-h6">
-      Преподаватель: Аркадий Гурин Дмитриевич
+    <p class="text-h6" v-if="!!teacherFullName">
+      Преподаватель: {{ teacherFullName }}
     </p>
-    <v-divider></v-divider>
-    <p class="text-h4 mt-6 mb-3">
+    <v-divider v-if="lessons.length !== 0"></v-divider>
+    <p class="text-h4 mt-6 mb-3" v-if="lessons.length !== 0">
       Уроки
     </p>
+    <h1 class="mt-10 text-center" v-else>
+      Для вас здесь пока что ничего нет
+    </h1>
     <v-row dense>
       <v-col
         v-for="item in lessons"
-        :key="item.name"
+        :key="item.id"
         :cols="12"
         class="mb-3 mt-3"
       >
@@ -24,11 +27,11 @@
                 {{ item.name }}
               </div>
               <v-progress-linear
-                v-model="item.tasks_solved / item.tasks_total * 100"
+                v-model="item.tasksAccepted / item.tasksTotal * 100"
                 color="green"
               ></v-progress-linear>
               <div class="text-caption">
-                <b class="green--text text--accent-4">{{ item.tasks_solved }}</b> / {{ item.tasks_total }} задач зачтено
+                <b class="green--text text--accent-4">{{ item.tasksAccepted }}</b> / {{ item.tasksTotal }} задач зачтено
               </div>
             </v-list-item-content>
 
@@ -49,40 +52,23 @@
 <script>
 export default {
   name: "index",
-  data() {
-    return {
-      lessons: [
-        {
-          name: 'Урок 5',
-          tasks_total: 14,
-          tasks_solved: 6,
-          link: '/courses/1/groups/1/lessons/5'
-        },
-        {
-          name: 'Урок 4',
-          tasks_total: 12,
-          tasks_solved: 12,
-          link: '/courses/1/groups/1/lessons/4'
-        },
-        {
-          name: 'Урок 3',
-          tasks_total: 19,
-          tasks_solved: 3,
-          link: '/courses/1/groups/1/lessons/3'
-        },
-        {
-          name: 'Урок 2',
-          tasks_total: 9,
-          tasks_solved: 7,
-          link: '/courses/1/groups/1/lessons/2'
-        },
-        {
-          name: 'Урок 1',
-          tasks_total: 7,
-          tasks_solved: 4,
-          link: '/courses/1/groups/1/lessons/1'
+  async fetch({ store, route, error }){
+    await store.dispatch('student/loadCourse', { courseId: route.params.course_id, groupId: route.params.group_id, error })
+  },
+  computed: {
+    courseName() {
+      return this.$store.getters['student/course'].courseName
+    },
+    teacherFullName() {
+      return this.$store.getters['student/course'].teacherFullName
+    },
+    lessons() {
+      return this.$store.getters['student/course'].lessons.map((elem) => {
+        return {
+          ...elem,
+          link: `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${elem.id}`
         }
-      ]
+      })
     }
   }
 }

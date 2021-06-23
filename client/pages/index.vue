@@ -1,13 +1,16 @@
 <template>
   <div>
-    <div>
+    <div v-if="courses.length === 0 && groups.length === 0 && !isController">
+      <h1 class="mt-10 text-center">Для вас здесь пока что ничего нет</h1>
+    </div>
+    <div v-if="courses.length !== 0">
       <h2 class="text-h4 mb-6">
         Курсы
       </h2>
       <v-row dense>
         <v-col
           v-for="item in courses"
-          :key="item.name"
+          :key="item.id"
           :cols="($vuetify.breakpoint.sm || $vuetify.breakpoint.xs) ? 12 : ($vuetify.breakpoint.md ? 6 : 4)"
           height="300px"
           class="mb-3"
@@ -32,7 +35,7 @@
         </v-col>
       </v-row>
     </div>
-    <div>
+    <div v-if="groups.length !== 0">
       <v-divider class="mt-6 pt-6"></v-divider>
       <h2 class="text-h4 mb-6">
         Ваши группы
@@ -40,7 +43,7 @@
       <v-row dense>
         <v-col
           v-for="item in groups"
-          :key="item.name"
+          :key="item.id"
           :cols="($vuetify.breakpoint.sm || $vuetify.breakpoint.xs) ? 12 : ($vuetify.breakpoint.md ? 6 : 4)"
           height="300px"
           class="mb-3"
@@ -65,7 +68,7 @@
         </v-col>
       </v-row>
     </div>
-    <div>
+    <div v-if="isController">
       <v-divider class="mt-6 pt-6"></v-divider>
       <h2 class="text-h4 mb-6">
         Панель контроля
@@ -103,36 +106,28 @@ export default {
     Logo,
     VuetifyLogo
   },
-  data() {
-    return {
-      courses: [
-        {
-          name: 'Курс программирование на языке Python',
-          link: '/courses/1/groups/1'
-        },
-        {
-          name: 'Курс разработка веб интерфейсов и веб-приложений',
-          link: '/courses/2/groups/1'
+  async fetch({store}) {
+    await store.dispatch('main/loadCoursesGroupsAndIsController')
+  },
+  computed: {
+    courses() {
+      return this.$store.getters['main/studyingCourses'].map((elem) => {
+        return {
+          ...elem,
+          link: `/courses/${elem.id}/groups/${elem.groupId}`
         }
-      ],
-      groups: [
-        {
-          name: 'Курс программирование на языке Python, Группа 1',
-          link: '/teacher_panel/courses/1/groups/1'
-        },
-        {
-          name: 'Курс программирование на языке Python, Группа 2',
-          link: '/teacher_panel/courses/1/groups/2'
-        },
-        {
-          name: 'Курс разработка веб интерфейсов и веб-приложений, Группа 1',
-          link: '/teacher_panel/courses/2/groups/1'
-        },
-        {
-          name: 'Курс разработка веб интерфейсов и веб-приложений, Группа 2',
-          link: '/teacher_panel/courses/2/groups/2'
+      })
+    },
+    groups() {
+      return this.$store.getters['main/teachingGroups'].map((elem) => {
+        return {
+          ...elem,
+          link: `/teacher_panel/courses/${elem.courseId}/groups/${elem.id}`
         }
-      ]
+      })
+    },
+    isController() {
+      return this.$store.getters['main/isController']
     }
   }
 }

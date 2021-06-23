@@ -2,7 +2,7 @@
   <div>
     <v-btn
       class="mt-6"
-      :to="'/courses/1/groups/1'"
+      :to="`/courses/${this.$route.params.course_id}/groups/${this.$route.params.group_id}`"
     >
       <v-icon>
         mdi-chevron-left
@@ -12,15 +12,15 @@
       </div>
     </v-btn>
     <p class="text-h4 mt-4">
-      Урок 1
+      {{ title }}
     </p>
     <v-progress-linear
-      :value="solvedTasks / totalTasks * 100"
+      :value="tasksAccepted / tasksTotal * 100"
       color="green"
       class="linear-progress-bar--small"
     ></v-progress-linear>
     <div class="mb-6">
-      <b class="green--text text--accent-4">{{ solvedTasks }}</b> / {{ totalTasks }} задач зачтено
+      <b class="green--text text--accent-4">{{ tasksAccepted }}</b> / {{ tasksTotal }} задач зачтено
     </div>
     <v-divider></v-divider>
     <v-row>
@@ -30,34 +30,39 @@
         <p class="text-h4 mt-6 mb-3">
           Задачи
         </p>
+        <p v-if="tasks.length === 0">
+          Здесь пока нет задач
+        </p>
         <v-row dense>
           <v-col
             v-for="item in tasks"
-            :key="item.name"
+            :key="item.id"
             :cols="12"
             class="mb-1 mt-1"
           >
             <v-card>
               <v-list-item>
                 <v-list-item-action class="mr-3">
-                  <v-icon
-                    v-if="item.status === 'accepted'"
-                    color="green"
-                  >
-                    mdi-checkbox-marked-circle
-                  </v-icon>
-                  <v-icon
-                    v-else-if="item.status === 'rejected'"
-                    color="red"
-                  >
-                    mdi-close-circle
-                  </v-icon>
-                  <v-icon
-                    v-else-if="item.status === 'waiting'"
-                    color="grey"
-                  >
-                    mdi-clock-time-five
-                  </v-icon>
+                  <div v-if="!!item.solution">
+                    <v-icon
+                      v-if="item.solution.status === 'accepted'"
+                      color="green"
+                    >
+                      mdi-checkbox-marked-circle
+                    </v-icon>
+                    <v-icon
+                      v-else-if="item.solution.status === 'rejected'"
+                      color="red"
+                    >
+                      mdi-close-circle
+                    </v-icon>
+                    <v-icon
+                      v-else-if="item.solution.status === 'waiting'"
+                      color="grey"
+                    >
+                      mdi-clock-time-five
+                    </v-icon>
+                  </div>
                   <v-icon
                     v-else
                     color="grey darken-3"
@@ -92,6 +97,9 @@
         <v-list
           :style="{ backgroundColor: 'transparent' }"
         >
+          <p v-if="materials.length === 0">
+            Здесь пока нет материалов
+          </p>
           <v-list-item
             v-for="item in materials"
             :to="item.link"
@@ -115,61 +123,42 @@
 <script>
 export default {
   name: "index",
-  data() {
-    return {
-      solvedTasks: 4,
-      totalTasks: 7,
-      tasks: [
-        {
-          name: 'Задача 1',
-          link: '/courses/1/groups/1/lessons/1/tasks/1/solutions/1',
-          status: 'accepted'
-        },
-        {
-          name: 'Задача 2',
-          link: '/courses/1/groups/1/lessons/1/tasks/2/solutions/2',
-          status: 'accepted'
-        },
-        {
-          name: 'Задача 3',
-          link: '/courses/1/groups/1/lessons/1/tasks/3/solutions/3',
-          status: 'accepted'
-        },
-        {
-          name: 'Задача 4',
-          link: '/courses/1/groups/1/lessons/1/tasks/4/solutions/4',
-          status: 'accepted'
-        },
-        {
-          name: 'Задача 5',
-          link: '/courses/1/groups/1/lessons/1/tasks/5/solutions/5',
-          status: 'rejected'
-        },
-        {
-          name: 'Задача 6',
-          link: '/courses/1/groups/1/lessons/1/tasks/6/solutions/6',
-          status: 'waiting'
-        },
-        {
-          name: 'Задача 7',
-          link: '/courses/1/groups/1/lessons/1/tasks/7'
-        },
-      ],
-      materials: [
-        {
-          name: 'Учебник 1',
-          link: '/courses/1/groups/1/lessons/1/materials/1'
-        },
-        {
-          name: 'Учебник 2',
-          link: '/courses/1/groups/1/lessons/1/materials/2'
-        },
-        {
-          name: 'Учебник 3',
-          link: '/courses/1/groups/1/lessons/1/materials/3'
-        },
-      ]
-    }
+  async fetch({ store, route, error }){
+    await store.dispatch('student/loadLesson', {
+      courseId: route.params.course_id,
+      groupId: route.params.group_id,
+      lessonId: route.params.lesson_id,
+      error
+    })
+  },
+  computed: {
+    title() {
+      return this.$store.getters['student/lesson'].lessonName
+    },
+    tasksAccepted() {
+      return this.$store.getters['student/lesson'].tasksAccepted
+    },
+    tasksTotal() {
+      return this.$store.getters['student/lesson'].tasksTotal
+    },
+    tasks() {
+      return this.$store.getters['student/lesson'].tasks.map((elem) => {
+        return {
+          ...elem,
+          link: !!elem.solution
+            ? `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${elem.id}/solutions/${elem.solution.id}`
+            : `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${elem.id}`
+        }
+      })
+    },
+    materials() {
+      return this.$store.getters['student/lesson'].materials.map((elem) => {
+        return {
+          ...elem,
+          link: `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/materials/${elem.id}`
+        }
+      })
+    },
   }
 }
 </script>

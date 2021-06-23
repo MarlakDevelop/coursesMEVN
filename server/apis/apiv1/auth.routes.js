@@ -29,6 +29,8 @@ router.post(
 
       const {login, password} = req.body
 
+      return res.json({ token: 'assda', userId: 1 })
+
       const user = await User.findOne({ login })
 
       if (!user) {
@@ -44,7 +46,7 @@ router.post(
       const token = jwt.sign(
         { userId: user.id },
         config.get('secret'),
-        { expiresIn: '30d' }
+        { expiresIn: '14d' }
       )
 
       res.json({ token, userId: user.id })
@@ -64,6 +66,18 @@ router.get(
     res.status(200).json({ message: 'Вы авторизованы' })
   })
 
+
+// /api/v1/auth/check_auth
+router.get(
+  '/check_auth',
+  [
+    auth
+  ],
+  async (req, res) => {
+    res.status(200)
+  })
+
+// /api/v1/auth/check_control
 router.get(
   '/check_control',
   [
@@ -71,7 +85,26 @@ router.get(
     control
   ],
   async (req, res) => {
-    res.status(200).json({ message: 'Вы контроллер' })
+    res.status(200)
+  })
+
+// /api/v1/auth/me
+router.get(
+  '/me',
+  [
+    // auth
+  ],
+  async (req, res) => {
+    try {
+      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
+      // groups = req.current_user.groups
+      // is_controller = req.current_user.is_controller
+      res.json({
+        fullName: 'Гурин Аркадий'
+      })
+    } catch (e) {
+      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
+    }
   })
 
 module.exports = router

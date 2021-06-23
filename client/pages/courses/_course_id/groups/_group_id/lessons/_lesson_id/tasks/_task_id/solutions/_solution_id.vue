@@ -1,30 +1,58 @@
 <template>
   <div>
+    <v-dialog
+      v-model="dialog.isOpened"
+      width="500"
+      dark
+    >
+      <v-card>
+        <v-card-title class="text-h5 grey darken-4">
+          {{ dialog.title }}
+        </v-card-title>
+
+        <v-card-text class="pt-6">
+          {{ dialog.text }}
+        </v-card-text>
+
+        <v-divider></v-divider>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="grey"
+            text
+            @click="dialog.isOpened = false"
+          >
+            Ок
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <v-navigation-drawer
-      v-model="task.isVisible"
+      v-model="taskIsVisible"
       fixed
       temporary
       right
       :width="800"
-      class="pr-10 pl-10"
+      class="pr-2 pl-10"
     >
       <v-btn
         class="mt-6"
-        @click="task.isVisible = false"
+        @click="taskIsVisible = false"
       >
         <v-icon>mdi-chevron-left</v-icon>
         <div class="pr-2 pl-1">К решению</div>
       </v-btn>
       <p class="text-h4 mt-6 mb-6">
-        {{ task.title }}
+        {{ title }}
       </p>
       <div
-        v-html="task.body"
+        v-html="body"
         class="overflow-x-auto overflow-y-auto"
       ></div>
     </v-navigation-drawer>
     <v-navigation-drawer
-      v-model="verdict.isVisible"
+      v-model="verdictIsVisible"
       fixed
       temporary
       right
@@ -33,7 +61,7 @@
     >
       <v-btn
         class="mt-6"
-        @click="verdict.isVisible = false"
+        @click="verdictIsVisible = false"
       >
         <v-icon>mdi-chevron-left</v-icon>
         <div class="pr-2 pl-1">К решению</div>
@@ -45,7 +73,7 @@
         dark
         class="pt-4 pl-4 pr-4 pb-4 mt-1 mb-4"
       >
-        {{ verdict.title }}
+        {{ verdict.name }}
       </v-card>
       <p class="text-h5 mt-6 mb-1">
         Комментарий:
@@ -60,17 +88,17 @@
     <div class="wrapper">
       <v-btn
         class="mt-6"
-        :to="'/courses/1/groups/1/lessons/1'"
+        :to="`/courses/${this.$route.params.course_id}/groups/${this.$route.params.group_id}/lessons/${this.$route.params.lesson_id}`"
       >
         <v-icon>mdi-chevron-left</v-icon>
         <div class="pr-2 pl-1">К уроку</div>
       </v-btn>
       <p class="text-h4 mt-6 mb-6">
-        {{ task.title }}
+        {{ title }}
       </p>
       <v-btn
         class="mb-6"
-        @click="task.isVisible = true"
+        @click="taskIsVisible = true"
       >
         Условие
       </v-btn>
@@ -81,47 +109,48 @@
             :class="$vuetify.breakpoint.md || $vuetify.breakpoint.xs || $vuetify.breakpoint.sm ? 'pb-0' : 'pr-0'"
           >
             <v-toolbar
-              v-if="status === 'accepted'"
+              v-if="status.type === 'accepted'"
               color="green darken-3"
               dark
             >
               <v-toolbar-title>
-                <div>ID 213213</div>
-                <div class="text-caption">21 апр, 20:56</div>
+                <div>ID {{ subSolution.id }}</div>
+                <div class="text-caption">{{ subSolution.date }}</div>
               </v-toolbar-title>
               <v-spacer></v-spacer>
               <v-toolbar-title>
                 <div>Зачтено</div>
-                <div class="text-caption">21 апр, 20:59</div>
+                <div class="text-caption">{{ status.date }}</div>
               </v-toolbar-title>
             </v-toolbar>
             <v-toolbar
-              v-else-if="status === 'rejected'"
+              v-else-if="status.type === 'rejected'"
               color="red darken-3"
               dark
             >
               <v-toolbar-title>
-                <div>ID 213213</div>
-                <div class="text-caption">21 апр, 20:56</div>
+                <div>ID {{ subSolution.id }}</div>
+                <div class="text-caption">{{ subSolution.date }}</div>
               </v-toolbar-title>
               <v-spacer></v-spacer>
               <v-toolbar-title>
                 <div>Доработать</div>
-                <div class="text-caption">21 апр, 20:59</div>
+                <div class="text-caption">{{ status.date }}</div>
               </v-toolbar-title>
             </v-toolbar>
             <v-toolbar
-              v-else-if="status === 'waiting'"
+              v-else-if="status.type === 'waiting'"
               color="grey darken-3"
               dark
             >
               <v-toolbar-title>
-                <div>ID 213213</div>
-                <div class="text-caption">21 апр, 20:56</div>
+                <div>ID {{ subSolution.id }}</div>
+                <div class="text-caption">{{ subSolution.date }}</div>
               </v-toolbar-title>
               <v-spacer></v-spacer>
               <v-toolbar-title>
                 <div>Ожидание <v-icon>mdi-clock</v-icon></div>
+                <div class="text-caption">{{ status.date }}</div>
               </v-toolbar-title>
             </v-toolbar>
             <client-only v-if="code">
@@ -141,7 +170,8 @@
                 </div>
                 <a
                   class="grey--text text-body d-block"
-                  href="#"
+                  target="_blank"
+                  :href="filePath"
                 >
                   Скачать решение
                 </a>
@@ -157,7 +187,10 @@
               dark
             >
               <v-spacer></v-spacer>
-              <v-btn>
+              <input type="file" id="files" ref="files" class="d-none" v-on:change="handleFileUpload()" accept=".zip,.rar,.py,.php,.js,.ts,.pas,.cpp,.vue,.jsx,.html,.css,.sass,.scss,.cs,.java,.txt"/>
+              <v-btn
+                @click="uploadSolution()"
+              >
                 Отправить решение <v-icon>mdi-upload</v-icon>
               </v-btn>
               <v-spacer></v-spacer>
@@ -180,9 +213,10 @@
                     <v-chip
                       link
                       label
+                      @click="openSubSolution(item.id)"
                     >
                       <div class="text-truncate">
-                        {{ item.title }}
+                        ID {{ item.id }}
                       </div>
                     </v-chip>
                     <div class="text-caption">
@@ -193,7 +227,7 @@
                 </div>
                 <div
                   class="d-flex mb-4 mt-4 text-right"
-                  v-else
+                  v-else-if="item.type === 'verdict'"
                 >
                   <v-spacer></v-spacer>
                   <div
@@ -202,10 +236,10 @@
                     <v-chip
                       link
                       label
-                      @click="verdict.isVisible = true"
+                      @click="openVerdict(item.id)"
                     >
                       <div class="text-truncate">
-                        {{ item.title }}
+                        {{ item.name }}
                       </div>
                     </v-chip>
                     <div class="text-caption">
@@ -222,7 +256,7 @@
         class="d-flex mt-10"
         v-if="!($vuetify.breakpoint.md || $vuetify.breakpoint.xs || $vuetify.breakpoint.sm)"
       >
-        <v-btn>
+        <v-btn :disabled="!prevLink" :to="prevLink">
           <v-icon>mdi-arrow-left</v-icon> Предыдущая
         </v-btn>
         <v-spacer></v-spacer>
@@ -233,24 +267,26 @@
             :to="item.link"
             icon
           >
-            <v-icon
-              v-if="item.status === 'accepted'"
-              color="green"
-            >
-              mdi-checkbox-marked-circle
-            </v-icon>
-            <v-icon
-              v-else-if="item.status === 'rejected'"
-              color="red"
-            >
-              mdi-close-circle
-            </v-icon>
-            <v-icon
-              v-else-if="item.status === 'waiting'"
-              color="grey"
-            >
-              mdi-clock-time-five
-            </v-icon>
+            <div v-if="!!item.solution">
+              <v-icon
+                v-if="item.solution.status === 'accepted'"
+                color="green"
+              >
+                mdi-checkbox-marked-circle
+              </v-icon>
+              <v-icon
+                v-else-if="item.solution.status === 'rejected'"
+                color="red"
+              >
+                mdi-close-circle
+              </v-icon>
+              <v-icon
+                v-else-if="item.solution.status === 'waiting'"
+                color="grey"
+              >
+                mdi-clock-time-five
+              </v-icon>
+            </div>
             <v-icon
               v-else
               color="grey darken-3"
@@ -260,7 +296,7 @@
           </v-btn>
         </div>
         <v-spacer></v-spacer>
-        <v-btn>
+        <v-btn :disabled="!nextLink" :to="nextLink">
           Следующая <v-icon>mdi-arrow-right</v-icon>
         </v-btn>
       </div>
@@ -271,221 +307,171 @@
 <script>
 
 export default {
-  name: "_task_id",
+  name: "_solution_id",
+  async fetch({ store, route, error }){
+    await store.dispatch('student/loadTaskAndSolution', {
+      courseId: route.params.course_id,
+      groupId: route.params.group_id,
+      lessonId: route.params.lesson_id,
+      taskId: route.params.task_id,
+      solutionId: route.params.solution_id,
+      error
+    })
+  },
   data() {
     return {
-      code: 'from discord.ext import commands\n' +
-        'import pymorphy2\n' +
-        '\n' +
-        '\n' +
-        'morph = pymorphy2.MorphAnalyzer()\n' +
-        '\n' +
-        '\n' +
-        'class RandomThings(commands.Cog):\n' +
-        '    def __init__(self, bot):\n' +
-        '        self.bot = bot\n' +
-        '\n' +
-        '    @commands.command(name=\'help_bot\')\n' +
-        '    async def help_bot(self, ctx):\n' +
-        '        await ctx.send(\'Commands:\\n"#!numerals" for agreement with numerals\\n"#!alive" for define alive or not alive\\n"#!noun" for noun case (nomn, gent, datv, accs, ablt, loct) and number state (sing, plur)\\n"#!inf" for infinitive state\\n"#!morph" for full morphological analysis\')\n' +
-        '\n' +
-        '    @commands.command(name=\'numerals\')\n' +
-        '    async def numerals(self, ctx, string, number):\n' +
-        '        res = morph.parse(string)[0]\n' +
-        '        word = res.make_agree_with_number(int(number)).word\n' +
-        '        await ctx.send(f\'{number} {word}\')\n' +
-        '\n' +
-        '    @commands.command(name=\'alive\')\n' +
-        '    async def alive(self, ctx, string):\n' +
-        '        res = morph.parse(string)[0]\n' +
-        '        await ctx.send(f\'{res.word} {"живой" if res.tag.animacy == "anim" else "не живой"}\')\n' +
-        '\n' +
-        '    @commands.command(name=\'noun\')\n' +
-        '    async def noun(self, ctx, string, case, num):\n' +
-        '        res = morph.parse(string)[0]\n' +
-        '        result = res.inflect({case, num})\n' +
-        '        await ctx.send(result.word)\n' +
-        '\n' +
-        '    @commands.command(name=\'inf\')\n' +
-        '    async def inf(self, ctx, string):\n' +
-        '        res = morph.parse(string)[0].normal_form\n' +
-        '        await ctx.send(res)\n' +
-        '\n' +
-        '    @commands.command(name=\'morph\')\n' +
-        '    async def morph(self, ctx, string):\n' +
-        '        res = morph.parse(string)[0]\n' +
-        '        await ctx.send(res)\n' +
-        '\n' +
-        '\n' +
-        'bot = commands.Bot(command_prefix=\'#!\')\n' +
-        'bot.add_cog(RandomThings(bot))\n' +
-        'bot.run(TOKEN)',
-      status: 'rejected',
-      cmOptions: {
-        tabSize: 4,
-        mode: 'python',
-        theme: 'darcula',
-        lineNumbers: true,
-        line: true,
-        readOnly: 'nocursor'
-        // more CodeMirror options...
+      dialog: {
+        isOpened: false,
+        title: '',
+        text: ''
       },
-      task: {
-        isVisible: false,
-        title: 'Задача 1',
-        body: '<div class="problem-statement">\n<div class="legend"><span style="">\n<p>Реализуйте класс <span style="font-weight:bold;">Date</span>, экземпляры которого при инициализации принимают месяц и день. </p></span><p>При вычитании дат (d1 - d2) должно возвращаться число дней между d1 и d2. </p>\n<p>Число дней должно быть: равно нулю, если d1 и d2 — одна и та же дата, быть больше нуля, если d1 позже d2, быть меньше нуля,\nесли d1 раньше d2.<br> Считайте, что все даты указаны в пределах одного и того же не вискосного года (в феврале 28 дней).</p></di<h3>Пример 1</h<table class="sample-tests"><thea<tr><th>Ввод</th><th>Вывод</t</t</thead><tbod<tr><td><pre>from solution impojan5 = Datjan1 = Datprint(jan5 print(jan1 print(jan1 print(jan5 </pre></td><td</pre></t</t</tbod</tabl<h3>Пример 2</h<table class="sample-tests"><thea<tr><th>Ввод</th><th>Вывод</t</t</thead><tbod<tr><td><pre>from solution impomar5 = Datjan1 = Datprint(mar5 print(jan1 print(jan1 print(mar5 </pre></td><td></pre></t</t</tbod</ta</div>'
-      },
-      tasks: [
-        {
-          link: '/courses/1/groups/1/lessons/1/tasks/1/solutions/1',
-          status: 'accepted'
-        },
-        {
-          link: '/courses/1/groups/1/lessons/1/tasks/2/solutions/2',
-          status: 'accepted'
-        },
-        {
-          link: '/courses/1/groups/1/lessons/1/tasks/3/solutions/3',
-          status: 'accepted'
-        },
-        {
-          link: '/courses/1/groups/1/lessons/1/tasks/4/solutions/4',
-          status: 'accepted'
-        },
-        {
-          link: '/courses/1/groups/1/lessons/1/tasks/5/solutions/5',
-          status: 'rejected'
-        },
-        {
-          link: '/courses/1/groups/1/lessons/1/tasks/6/solutions/6',
-          status: 'waiting'
-        },
-        {
-          link: '/courses/1/groups/1/lessons/1/tasks/7'
-        },
-      ],
-      verdict: {
-        isVisible: false,
-        title: 'Доработать Доработать Доработать Доработать Доработать Доработать Доработать Доработать',
-        comment: 'Я крутой Я крутой Я крутой'
-      },
-      history: [
-        {
-          title: 'Зачтено',
-          type: 'verdict',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'ID 102213',
-          type: 'solution',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'Доработать Доработать Доработать Доработать Доработать Доработать Доработать Доработать',
-          type: 'verdict',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'ID 102214',
-          type: 'solution',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'Доработать',
-          type: 'verdict',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'ID 102215',
-          type: 'solution',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'Доработать',
-          type: 'verdict',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'ID 102216',
-          type: 'solution',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'Доработать',
-          type: 'verdict',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'ID 102217',
-          type: 'solution',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'Доработать',
-          type: 'verdict',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'ID 102213',
-          type: 'solution',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'Доработать',
-          type: 'verdict',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'ID 102214',
-          type: 'solution',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'Доработать',
-          type: 'verdict',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'ID 102215',
-          type: 'solution',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'Доработать',
-          type: 'verdict',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'ID 102216',
-          type: 'solution',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'Доработать',
-          type: 'verdict',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'ID 102217',
-          type: 'solution',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'Доработать',
-          type: 'verdict',
-          date: '23 апр 20:00'
-        },
-        {
-          title: 'ID 102213',
-          type: 'solution',
-          date: '23 апр 20:00'
-        }
-      ]
+      taskIsVisible: false,
+      verdictIsVisible: false
     }
   },
   computed: {
     codemirror() {
       return this.$refs.cmEditor.codemirror
+    },
+    cmOptions() {
+      return {
+        tabSize: 4,
+        mode: this.$store.getters['student/task'].solution.subSolution.file.mimeType,
+        theme: 'darcula',
+        lineNumbers: true,
+        line: true,
+        readOnly: true
+        // more CodeMirror options...
+      }
+    },
+    verdict() {
+      return this.$store.getters['student/task'].solution.verdict
+    },
+    title() {
+      return this.$store.getters['student/task'].taskName
+    },
+    body() {
+      return this.$store.getters['student/task'].body
+    },
+    filePath() {
+      return !!this.$store.getters['student/task'].solution.subSolution.file.body ? null : this.$store.getters['student/task'].solution.subSolution.file.path
+    },
+    code() {
+      return this.$store.getters['student/task'].solution.subSolution.file.body
+    },
+    status() {
+      return {
+        type: this.$store.getters['student/task'].solution.status,
+        date: (new Date(this.$store.getters['student/task'].solution.statusDate)).toLocaleString("ru-RU", { minute: '2-digit', hour: '2-digit', month: 'short', day: 'numeric' })
+      }
+    },
+    subSolution() {
+      return {
+        id: this.$store.getters['student/task'].solution.subSolution.id,
+        date: (new Date(this.$store.getters['student/task'].solution.subSolution.date)).toLocaleString("ru-RU", { minute: '2-digit', hour: '2-digit', month: 'short', day: 'numeric' })
+      }
+    },
+    tasks() {
+      return this.$store.getters['student/task'].tasks.map((elem) => {
+        return {
+          ...elem,
+          link: !!elem.solution
+            ? `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${elem.id}/solutions/${elem.solution.id}`
+            : `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${elem.id}`
+        }
+      })
+    },
+    history() {
+      return this.$store.getters['student/task'].solution.history.map((elem) => {
+        return {
+          ...elem,
+          date: (new Date(elem.date)).toLocaleString("ru-RU", { minute: '2-digit', hour: '2-digit', month: 'short', day: 'numeric' })
+        }
+      })
+    },
+    nextLink() {
+      if (this.$store.getters['student/task'].tasks.map((elem) => {
+        return elem.id
+      }).indexOf(Number(this.$route.params.task_id)) + 1 >= this.$store.getters['student/task'].tasks.length) {
+        return null
+      } else {
+        const nextTask = this.$store.getters['student/task'].tasks[this.$store.getters['student/task'].tasks.map((elem) => {
+          return elem.id
+        }).indexOf(Number(this.$route.params.task_id)) + 1]
+        return !!nextTask.solution
+          ? `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${nextTask.id}/solutions/${nextTask.solution.id}`
+          : `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${nextTask.id}`
+      }
+    },
+    prevLink() {
+      if (this.$store.getters['student/task'].tasks.map((elem) => {
+        return elem.id
+      }).indexOf(Number(this.$route.params.task_id)) - 1 < 0) {
+        return null
+      } else {
+        const prevTask = this.$store.getters['student/task'].tasks[this.$store.getters['student/task'].tasks.map((elem) => {
+          return elem.id
+        }).indexOf(Number(this.$route.params.task_id)) - 1]
+
+        return !!prevTask.solution
+          ? `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${prevTask.id}/solutions/${prevTask.solution.id}`
+          : `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${prevTask.id}`
+      }
+    }
+  },
+  methods: {
+    async openSubSolution(id) {
+      await this.$store.dispatch('student/loadSubSolution', {
+        courseId: this.$route.params.course_id,
+        groupId: this.$route.params.group_id,
+        lessonId: this.$route.params.lesson_id,
+        taskId: this.$route.params.task_id,
+        solutionId: this.$route.params.solution_id,
+        subSolutionId: id,
+        error: this.$nuxt.error
+      })
+    },
+    async openVerdict(id) {
+      await this.$store.dispatch('student/loadVerdict', {
+        courseId: this.$route.params.course_id,
+        groupId: this.$route.params.group_id,
+        lessonId: this.$route.params.lesson_id,
+        taskId: this.$route.params.task_id,
+        solutionId: this.$route.params.solution_id,
+        verdictId: id,
+        error: this.$nuxt.error
+      })
+      this.verdictIsVisible = true
+    },
+    uploadSolution() {
+      this.$refs.files.click();
+    },
+    async handleFileUpload() {
+      try {
+        const file = this.$refs.files.files[0]
+        if (!file) {
+          return
+        }
+        const formData = new FormData()
+        formData.append('file', file)
+        await this.$axios.$post(
+          `student/courses/${this.$route.params.course_id}/groups/${this.$route.params.group_id}/lessons/${this.$route.params.lesson_id}/tasks/${this.$route.params.task_id}/solutions/send_solution`,
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        ).then(() => {
+          this.$nuxt.refresh()
+        }).catch((err) => {
+          this.dialog.title = 'Ошибка'
+          this.dialog.text = err.response.data.message
+          this.dialog.isOpened = true
+        })
+      } catch (e) {
+        console.log(e)
+      }
     }
   }
 }

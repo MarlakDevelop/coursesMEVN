@@ -3,17 +3,18 @@
     <v-btn
       block
       class="red darken-2"
+      @click="logout()"
     >
       Выйти из аккаунта
     </v-btn>
     <h2 class="text-h4 mt-6 pt-6 mb-3">
-      Аркадий Гурин Дмитриевич
+      {{ fullName }}
     </h2>
     <v-divider></v-divider>
     <v-row dense>
       <v-col
         v-for="item in courses"
-        :key="item.name"
+        :key="item.id"
         :cols="($vuetify.breakpoint.sm || $vuetify.breakpoint.xs) ? 12 : ($vuetify.breakpoint.md ? 6 : 4)"
         class="mb-3 mt-3"
       >
@@ -40,18 +41,21 @@
 <script>
 export default {
   name: "profile",
-  data() {
-    return {
-      courses: [
-        {
-          name: 'Курс программирование на языке Python',
-          rating: 42.32
-        },
-        {
-          name: 'Курс разработка веб интерфейсов и веб-приложений',
-          rating: 12.54
-        }
-      ]
+  async fetch({store}) {
+    await store.dispatch('main/loadProfile')
+  },
+  computed: {
+    courses() {
+      return this.$store.getters['main/ratedCourses']
+    },
+    fullName() {
+      return this.$store.getters['main/profileFullName']
+    }
+  },
+  methods: {
+    logout() {
+      this.$store.dispatch('logout')
+      this.$router.push('/signin')
     }
   }
 }

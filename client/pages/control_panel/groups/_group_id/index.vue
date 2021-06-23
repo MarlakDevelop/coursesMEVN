@@ -1,5 +1,33 @@
 <template>
   <div class="wrapper">
+    <v-dialog
+      v-model="dialog.isOpened"
+      width="500"
+      dark
+    >
+      <v-card>
+        <v-card-title class="text-h5 grey darken-4">
+          {{ dialog.title }}
+        </v-card-title>
+
+        <v-card-text class="pt-6">
+          {{ dialog.text }}
+        </v-card-text>
+
+        <v-divider></v-divider>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="grey"
+            text
+            @click="dialog.isOpened = false"
+          >
+            Ок
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <v-btn
       class="mt-6 mb-6"
       :to="'/control_panel/groups'"
@@ -12,7 +40,7 @@
       </div>
     </v-btn>
     <h2 class="text-h4 mb-6">
-      Группа 1
+      {{ title }}
     </h2>
     <v-form v-model="form.valid">
       <v-text-field
@@ -27,7 +55,8 @@
       block
       color="green darken-2"
       class="mt-2"
-      @click="() => {}"
+      :disabled="!form.valid"
+      @click="updateGroup()"
     >
       Обновить группу
     </v-btn>
@@ -37,13 +66,13 @@
     <div class="d-flex mt-2">
       <v-btn
         class="mr-4"
-        :to="'/control_panel/groups/1/update_teacher'"
+        :to="`/control_panel/groups/${this.$route.params.group_id}/update_teacher`"
       >
         Заменить преподавателя
       </v-btn>
       <v-btn
         class="mr-4"
-        :to="'/control_panel/groups/1/add_student'"
+        :to="`/control_panel/groups/${this.$route.params.group_id}/add_student`"
       >
         Добавить студентов
       </v-btn>
@@ -55,7 +84,7 @@
     >
       <v-col
         v-for="item in students"
-        :key="item.fullName"
+        :key="item.id"
         :cols="12"
         height="300px"
         class="mb-3"
@@ -73,7 +102,7 @@
             <v-list-item-action>
               <v-btn
                 class="red darken-2"
-                @click="() => {}"
+                @click="removeStudent(item.id)"
               >
                 Убрать студента из группы
               </v-btn>
@@ -88,46 +117,16 @@
 <script>
 export default {
   name: "_group_id",
+  async fetch({store, route, error}) {
+    await store.dispatch('control/loadGroup', {groupId: route.params.group_id, error})
+  },
   data() {
     return {
-      teacher: {
-        login: 'user',
-        fullName: 'Гурин Аркадий'
+      dialog: {
+        isOpened: false,
+        title: '',
+        text: ''
       },
-      students: [
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий'
-        },
-      ],
       form: {
         valid: false,
         title: 'Группа 1',
@@ -136,6 +135,50 @@ export default {
           v => v.length <= 100 || 'Название должно быть короче 100',
         ]
       }
+    }
+  },
+  computed: {
+    title() {
+      if ((!!this.$store.getters['control/group'].groupName && !this.form.title) || this.$store.getters['control/group'].groupName !== this.form.title) {
+        this.form.title = this.$store.getters['control/group'].groupName
+      }
+      return this.$store.getters['control/group'].groupName
+    },
+    teacher() {
+      return this.$store.getters['control/group'].teacher
+    },
+    students() {
+      return this.$store.getters['control/group'].students
+    }
+  },
+  methods: {
+    async updateGroup() {
+      await this.$axios.$patch(
+        `control/groups/${this.$route.params.group_id}`,
+        {
+          name: this.form.title
+        }
+      ).then(() => {
+        this.$nuxt.refresh()
+      }).catch((err) => {
+        this.dialog.title = 'Ошибка'
+        this.dialog.text = err.response.data.message
+        this.dialog.isOpened = true
+      })
+    },
+    async removeStudent(studentId) {
+      await this.$axios.$delete(
+        `control/groups/${this.$route.params.group_id}/students/${studentId}`,
+        {
+          name: this.form.title
+        }
+      ).then(() => {
+        this.$nuxt.refresh()
+      }).catch((err) => {
+        this.dialog.title = 'Ошибка'
+        this.dialog.text = err.response.data.message
+        this.dialog.isOpened = true
+      })
     }
   }
 }

@@ -1,5 +1,33 @@
 <template>
   <div>
+    <v-dialog
+      v-model="dialog.isOpened"
+      width="500"
+      dark
+    >
+      <v-card>
+        <v-card-title class="text-h5 grey darken-4">
+          {{ dialog.title }}
+        </v-card-title>
+
+        <v-card-text class="pt-6">
+          {{ dialog.text }}
+        </v-card-text>
+
+        <v-divider></v-divider>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="grey"
+            text
+            @click="dialog.isOpened = false"
+          >
+            Ок
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <v-btn
       class="mt-6 mb-6"
       :to="'/control_panel/courses'"
@@ -12,10 +40,10 @@
       </div>
     </v-btn>
     <p class="text-h4 mt-6 pt-6">
-      Курс программирование на языке Python.
+      {{ title }}
     </p>
     <v-divider></v-divider>
-    <v-form>
+    <v-form v-model="form.valid">
       <v-text-field
         label="Название курса"
         color="white"
@@ -28,7 +56,8 @@
       block
       color="green darken-2"
       class="mt-2"
-      @click="() => {}"
+      :disabled="!form.valid"
+      @click="updateCourse()"
     >
       Обновить курс
     </v-btn>
@@ -36,7 +65,7 @@
       block
       color="red darken-2"
       class="mt-6"
-      @click="() => {}"
+      @click="deleteCourse()"
     >
       Удалить курс
     </v-btn>
@@ -46,14 +75,14 @@
     </p>
     <v-btn
       class="mb-10 mt-4"
-      :to="'/control_panel/courses/1/lessons/create'"
+      :to="`/control_panel/courses/${this.$route.params.course_id}/lessons/create`"
     >
       Создание урока
     </v-btn>
     <v-row dense>
       <v-col
         v-for="item in lessons"
-        :key="item.name"
+        :key="item.id"
         :cols="12"
         class="mb-3 mt-3"
       >
@@ -81,53 +110,67 @@
 <script>
 export default {
   name: "index",
+  async fetch({ store, route, error }){
+    await store.dispatch('control/loadCourse', { courseId: route.params.course_id, error })
+  },
   data() {
     return {
+      dialog: {
+        isOpened: false,
+        title: '',
+        text: ''
+      },
       form: {
         valid: false,
         title: '',
         titleRules: [
           v => !!v || 'Название необходимо',
           v => v.length <= 100 || 'Название должно быть короче 100',
-        ],
-        rating: '',
-        ratingRules: [
-          v => !!v || 'Рейтинг необходим',
-          v => /^\d*\.?\d*$/.test(v) || 'Рейтинг должен быть целочисленным или дробным числом',
         ]
-      },
-      lessons: [
-        {
-          name: 'Урок 7',
-          link: '/control_panel/courses/1/lessons/7',
-          isClosed: true
-        },
-        {
-          name: 'Урок 6',
-          link: '/control_panel/courses/1/lessons/6',
-          isClosed: true
-        },
-        {
-          name: 'Урок 5',
-          link: '/control_panel/courses/1/lessons/5'
-        },
-        {
-          name: 'Урок 4',
-          link: '/control_panel/courses/1/lessons/4'
-        },
-        {
-          name: 'Урок 3',
-          link: '/control_panel/courses/1/lessons/3'
-        },
-        {
-          name: 'Урок 2',
-          link: '/control_panel/courses/1/lessons/2'
-        },
-        {
-          name: 'Урок 1',
-          link: '/control_panel/courses/1/lessons/1'
+      }
+    }
+  },
+  computed: {
+    title() {
+      if ((!!this.$store.getters['control/course'].courseName && !this.form.title) || this.$store.getters['control/course'].courseName !== this.form.title) {
+        this.form.title = this.$store.getters['control/course'].courseName
+      }
+      return this.$store.getters['control/course'].courseName
+    },
+    lessons() {
+      return this.$store.getters['control/lessons'].map((item) => {
+        return {
+          ...item,
+          link: `/control_panel/courses/${this.$route.params.course_id}/lessons/${item.id}`
         }
-      ]
+      })
+    }
+  },
+  methods: {
+    async updateCourse() {
+      await this.$axios.patch(
+        `control/courses/${this.$route.params.course_id}`,
+        {
+          name: this.form.title
+        }
+      ).then(() => {
+        this.$nuxt.refresh()
+      }).catch((err) => {
+        this.dialog.title = 'Ошибка'
+        this.dialog.text = err.response.data.message
+        this.dialog.isOpened = true
+      })
+    },
+    async deleteCourse() {
+      await this.$axios.$delete(
+        `control/courses/${this.$route.params.course_id}`
+      ).then(() => {
+        this.$router.push('/control_panel/courses')
+      }).catch((err) => {
+        this.dialog.title = 'Ошибка'
+        this.dialog.text = err.response.data.message
+        this.dialog.isOpened = true
+      })
     }
   }
 }

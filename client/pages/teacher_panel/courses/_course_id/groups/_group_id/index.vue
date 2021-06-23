@@ -1,18 +1,18 @@
 <template>
   <div>
     <p class="text-h4 mt-6 pt-6">
-      Курс программирование на языке Python. Группа 1
+      {{ groupName }}
     </p>
     <div class="d-flex pb-4 pt-4 flex-wrap">
       <v-btn
         class="mb-4 mt-4 mr-4"
-        :to="'/teacher_panel/courses/1/groups/1/rating'"
+        :to="`/teacher_panel/courses/${this.$route.params.course_id}/groups/${this.$route.params.group_id}/rating`"
       >
         Рейтинг учащихся
       </v-btn>
       <v-btn
         class="mb-4 mt-4 mr-4"
-        :to="'/teacher_panel/courses/1/groups/1/waiting_tasks'"
+        :to="`/teacher_panel/courses/${this.$route.params.course_id}/groups/${this.$route.params.group_id}/waiting_tasks`"
       >
         Ожидающие проверки задачи
       </v-btn>
@@ -24,14 +24,14 @@
     <v-row dense>
       <v-col
         v-for="item in lessons"
-        :key="item.name"
+        :key="item.id"
         :cols="12"
         class="mb-3 mt-3"
       >
         <v-card>
           <v-list-item>
             <v-list-item-content>
-              <div :class="item.isClosed ? 'text-h6 grey--text darken-4' : 'text-h6'">
+              <div :class="item.isVisible ? 'text-h6' : 'text-h6 grey--text darken-4'">
                 {{ item.name }}
               </div>
             </v-list-item-content>
@@ -52,40 +52,20 @@
 <script>
 export default {
   name: "index",
-  data() {
-    return {
-      lessons: [
-        {
-          name: 'Урок 7',
-          link: '/teacher_panel/courses/1/groups/1/lessons/7',
-          isClosed: true
-        },
-        {
-          name: 'Урок 6',
-          link: '/teacher_panel/courses/1/groups/1/lessons/6',
-          isClosed: true
-        },
-        {
-          name: 'Урок 5',
-          link: '/teacher_panel/courses/1/groups/1/lessons/5'
-        },
-        {
-          name: 'Урок 4',
-          link: '/teacher_panel/courses/1/groups/1/lessons/4'
-        },
-        {
-          name: 'Урок 3',
-          link: '/teacher_panel/courses/1/groups/1/lessons/3'
-        },
-        {
-          name: 'Урок 2',
-          link: '/teacher_panel/courses/1/groups/1/lessons/2'
-        },
-        {
-          name: 'Урок 1',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1'
+  async fetch({ store, route, error }){
+    await store.dispatch('teacher/loadGroup', { courseId: route.params.course_id, groupId: route.params.group_id, error })
+  },
+  computed: {
+    groupName() {
+      return this.$store.getters['teacher/group'].groupName
+    },
+    lessons() {
+      return this.$store.getters['teacher/group'].lessons.map((elem) => {
+        return {
+          ...elem,
+          link: `/teacher_panel/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${elem.id}`
         }
-      ]
+      })
     }
   }
 }

@@ -2,7 +2,7 @@
   <div class="wrapper">
     <v-btn
       class="mt-6"
-      :to="'/teacher_panel/courses/1/groups/1'"
+      :to="`/teacher_panel/courses/${this.$route.params.course_id}/groups/${this.$route.params.group_id}`"
     >
       <v-icon>
         mdi-chevron-left
@@ -12,7 +12,7 @@
       </div>
     </v-btn>
     <p class="text-h4 mt-6 pt-6">
-      Урок 1
+      {{ groupName }}
     </p>
     <v-divider></v-divider>
     <p class="text-h5 mt-6 mb-3">
@@ -21,7 +21,7 @@
     <v-row>
       <v-col
         v-for="item in students"
-        :key="item.name"
+        :key="item.id"
         :cols="12"
       >
         <v-card>
@@ -43,30 +43,15 @@
 <script>
 export default {
   name: "rating",
-  data() {
-    return {
-      students: [
-        {
-          fullName: 'Гурин Аркадий',
-          rating: 6.42
-        },
-        {
-          fullName: 'Гурин Аркадий',
-          rating: 4.2
-        },
-        {
-          fullName: 'Гурин Аркадий',
-          rating: 3.21
-        },
-        {
-          fullName: 'Гурин Аркадий',
-          rating: 1.2
-        },
-        {
-          fullName: 'Гурин Аркадий',
-          rating: 0.1
-        }
-      ]
+  async fetch({ store, route, error }){
+    await store.dispatch('teacher/loadGroupRating', { courseId: route.params.course_id, groupId: route.params.group_id, error })
+  },
+  computed: {
+    groupName() {
+      return this.$store.getters['teacher/group'].groupName
+    },
+    students() {
+      return this.$store.getters['teacher/group'].students
     }
   }
 }

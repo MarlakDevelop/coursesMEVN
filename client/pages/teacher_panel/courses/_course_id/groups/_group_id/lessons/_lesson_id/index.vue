@@ -2,7 +2,7 @@
   <div>
     <v-btn
       class="mt-6"
-      :to="'/teacher_panel/courses/1/groups/1'"
+      :to="`/teacher_panel/courses/${this.$route.params.course_id}/groups/${this.$route.params.group_id}`"
     >
       <v-icon>
         mdi-chevron-left
@@ -12,14 +12,14 @@
       </div>
     </v-btn>
     <p class="text-h4 mt-6 mb-0">
-      Урок 1
+      {{ lessonName }}
     </p>
     <div class="d-flex mb-4 flex-wrap">
       <v-btn
         class="mb-4 mt-4 mr-4"
         color="red darken-2"
-        v-if="isClosed"
-        @click="isClosed = false"
+        v-if="isVisible"
+        @click="changeVisibility()"
       >
         Закрыть Доступ
       </v-btn>
@@ -27,13 +27,13 @@
         class="mb-4 mt-4 mr-4"
         color="green darken-2"
         v-else
-        @click="isClosed = true"
+        @click="changeVisibility()"
       >
         Открыть Доступ
       </v-btn>
       <v-btn
         class="mb-4 mt-4 mr-4"
-        :to="'/teacher_panel/courses/1/groups/1/lessons/1/progress'"
+        :to="`/teacher_panel/courses/${this.$route.params.course_id}/groups/${this.$route.params.group_id}/lessons/${this.$route.params.lesson_id}/progress`"
       >
         Прогресс учащихся
       </v-btn>
@@ -49,7 +49,7 @@
         <v-row dense>
           <v-col
             v-for="item in tasks"
-            :key="item.name"
+            :key="item.id"
             :cols="12"
             class="mb-1 mt-1"
           >
@@ -105,59 +105,43 @@
 <script>
 export default {
   name: "index",
-  data() {
-    return {
-      isClosed: false,
-      tasks: [
+  async fetch({ store, route, error }){
+    await store.dispatch('teacher/loadLesson', { courseId: route.params.course_id, groupId: route.params.group_id, lessonId: route.params.lesson_id, error })
+  },
+  computed: {
+    lessonName() {
+      return this.$store.getters['teacher/lesson'].lessonName
+    },
+    tasks() {
+      return this.$store.getters['teacher/lesson'].tasks.map((elem) => {
+        return {
+          ...elem,
+          link: `/teacher_panel/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${elem.id}`
+        }
+      })
+    },
+    materials() {
+      return this.$store.getters['teacher/lesson'].materials.map((elem) => {
+        return {
+          ...elem,
+          link: `/teacher_panel/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/materials/${elem.id}`
+        }
+      })
+    },
+    isVisible() {
+      return this.$store.getters['teacher/lesson'].isVisible
+    },
+  },
+  methods: {
+    async changeVisibility() {
+      await this.$axios.$patch(
+        `/teacher/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/set_visibility`,
         {
-          name: 'Задача 1',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1/tasks/1',
-          status: 'accepted'
-        },
-        {
-          name: 'Задача 2',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1/tasks/2',
-          status: 'accepted'
-        },
-        {
-          name: 'Задача 3',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1/tasks/3',
-          status: 'accepted'
-        },
-        {
-          name: 'Задача 4',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1/tasks/4',
-          status: 'accepted'
-        },
-        {
-          name: 'Задача 5',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1/tasks/5',
-          status: 'rejected'
-        },
-        {
-          name: 'Задача 6',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1/tasks/6',
-          status: 'waiting'
-        },
-        {
-          name: 'Задача 7',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1/tasks/7'
-        },
-      ],
-      materials: [
-        {
-          name: 'Учебник 1',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1/materials/1'
-        },
-        {
-          name: 'Учебник 2',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1/materials/2'
-        },
-        {
-          name: 'Учебник 3',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1/materials/3'
-        },
-      ]
+          visible: !this.isVisible
+        }
+      ).then(() => {
+        this.$store.dispatch('teacher/changeLessonVisibility')
+      }).catch()
     }
   }
 }

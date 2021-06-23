@@ -2,7 +2,7 @@
   <div class="wrapper">
     <v-btn
       class="mt-6"
-      :to="'/teacher_panel/courses/1/groups/1'"
+      :to="`/teacher_panel/courses/${this.$route.params.course_id}/groups/${this.$route.params.group_id}`"
     >
       <v-icon>
         mdi-chevron-left
@@ -11,13 +11,16 @@
         К группе
       </div>
     </v-btn>
-    <p class="text-h4 mt-6 mb-3">
+    <p class="text-h4 mt-6 pt-6">
+      {{ groupName }}
+    </p>
+    <p class="text-h5 mt-6 mb-3">
       Задачи, ожидающие проверки
     </p>
     <v-row dense>
       <v-col
         v-for="item in tasks"
-        :key="item.name"
+        :key="item.id"
         :cols="12"
         class="mb-1 mt-1"
       >
@@ -32,10 +35,10 @@
             </v-list-item-action>
             <v-list-item-content>
               <div class="text-h6">
-                {{ item.name }}
+                {{ item.taskName }}
               </div>
               <div class="text-caption">
-                {{ item.author.fullName }}
+                {{ item.studentFullName }}
               </div>
             </v-list-item-content>
 
@@ -56,59 +59,20 @@
 <script>
 export default {
   name: "waiting_tasks",
-  data() {
-    return {
-      tasks: [
-        {
-          name: 'Задача 1',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1/tasks/1/solutions/1',
-          author: {
-            fullName: 'Гурин Аркадий'
-          }
-        },
-        {
-          name: 'Задача 2',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1/tasks/2/solutions/2',
-          author: {
-            fullName: 'Гурин Аркадий'
-          }
-        },
-        {
-          name: 'Задача 3',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1/tasks/3/solutions/3',
-          author: {
-            fullName: 'Гурин Аркадий'
-          }
-        },
-        {
-          name: 'Задача 4',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1/tasks/4/solutions/4',
-          author: {
-            fullName: 'Гурин Аркадий'
-          }
-        },
-        {
-          name: 'Задача 5',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1/tasks/5/solutions/5',
-          author: {
-            fullName: 'Гурин Аркадий'
-          }
-        },
-        {
-          name: 'Задача 6',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1/tasks/6/solutions/6',
-          author: {
-            fullName: 'Гурин Аркадий'
-          }
-        },
-        {
-          name: 'Задача 7',
-          link: '/teacher_panel/courses/1/groups/1/lessons/1/tasks/7',
-          author: {
-            fullName: 'Гурин Аркадий'
-          }
-        },
-      ]
+  async fetch({ store, route, error }){
+    await store.dispatch('teacher/loadGroupWaitingTasks', { courseId: route.params.course_id, groupId: route.params.group_id, error })
+  },
+  computed: {
+    groupName() {
+      return this.$store.getters['teacher/group'].groupName
+    },
+    tasks() {
+      return this.$store.getters['teacher/group'].waitingTasks.map((item) => {
+        return {
+          ...item,
+          link: `/teacher_panel/courses/${this.$route.params.course_id}/groups/${this.$route.params.group_id}/lessons/${item.lessonId}/tasks/${item.taskId}/solutions/${item.id}`
+        }
+      })
     }
   }
 }

@@ -1,5 +1,33 @@
 <template>
   <div class="wrapper">
+    <v-dialog
+      v-model="dialog.isOpened"
+      width="500"
+      dark
+    >
+      <v-card>
+        <v-card-title class="text-h5 grey darken-4">
+          {{ dialog.title }}
+        </v-card-title>
+
+        <v-card-text class="pt-6">
+          {{ dialog.text }}
+        </v-card-text>
+
+        <v-divider></v-divider>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="grey"
+            text
+            @click="dialog.isOpened = false"
+          >
+            Ок
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <v-btn
       class="mt-6 mb-6"
       :to="'/control_panel/users'"
@@ -23,6 +51,7 @@
         :counter="32"
       ></v-text-field>
       <v-text-field
+        type="password"
         label="Пароль"
         color="white"
         v-model="form.password"
@@ -41,7 +70,8 @@
       block
       color="green darken-2"
       class="mt-2"
-      @click="() => {}"
+      :disabled="!form.valid"
+      @click="createUser()"
     >
       Зарегистрировать пользователя
     </v-btn>
@@ -53,6 +83,11 @@ export default {
   name: "create",
   data() {
     return {
+      dialog: {
+        isOpened: false,
+        title: '',
+        text: ''
+      },
       form: {
         valid: false,
         login: '',
@@ -71,6 +106,29 @@ export default {
           v => v.length <= 100 || 'Полное имя должно быть короче 100',
         ]
       },
+    }
+  },
+  methods: {
+    async createUser() {
+      await this.$axios.post(
+        `control/users`,
+        {
+          login: this.form.login,
+          fullName: this.form.fullName,
+          password: this.form.password
+        }
+      ).then(() => {
+        this.dialog.title = 'Успех'
+        this.dialog.text = 'Пользователь успешно создан'
+        this.dialog.isOpened = true
+        this.form.login = ''
+        this.form.password = ''
+        this.form.fullName = ''
+      }).catch((err) => {
+        this.dialog.title = 'Ошибка'
+        this.dialog.text = err.response.data.message
+        this.dialog.isOpened = true
+      })
     }
   }
 }

@@ -1,6 +1,6 @@
 <template>
   <div class="wrapper">
-    <h2 class="text-h3 mb-6">
+    <h2 class="text-h3 mt-6 mb-6">
       Панель курсов
     </h2>
     <v-divider></v-divider>
@@ -26,7 +26,7 @@
     >
       <v-col
         v-for="item in courses.filter(item => item.name.toLowerCase().includes(search.toLowerCase()))"
-        :key="item.name"
+        :key="item.id"
         :cols="12"
         height="300px"
         class="mb-3"
@@ -34,7 +34,7 @@
         <v-card>
           <v-list-item>
             <v-list-item-content>
-              <div :class="item.isClosed ? 'text-h6 grey--text darken-4' : 'text-h6'">
+              <div class="text-h6">
                 {{ item.name }}
               </div>
             </v-list-item-content>
@@ -55,6 +55,9 @@
 <script>
 export default {
   name: "index",
+  async fetch({ store, error }) {
+    await store.dispatch('control/loadCourses', {error})
+  },
   data() {
     return {
       form: {
@@ -65,17 +68,17 @@ export default {
           v => v.length <= 100 || 'Название должно быть короче 100',
         ]
       },
-      search: '',
-      courses: [
-        {
-          name: 'Курс программирование на языке Python',
-          link: '/control_panel/courses/1'
-        },
-        {
-          name: 'Курс разработка веб интерфейсов и приложений',
-          link: '/control_panel/courses/2'
+      search: ''
+    }
+  },
+  computed: {
+    courses() {
+      return this.$store.getters['control/courses'].map((item) => {
+        return {
+          ...item,
+          link: `/control_panel/courses/${item.id}`
         }
-      ]
+      })
     }
   }
 }

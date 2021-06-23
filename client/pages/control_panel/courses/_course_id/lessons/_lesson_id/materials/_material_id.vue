@@ -1,21 +1,50 @@
 <template>
   <div class="wrapper">
+    <v-dialog
+      v-model="dialog.isOpened"
+      width="500"
+      dark
+    >
+      <v-card>
+        <v-card-title class="text-h5 grey darken-4">
+          {{ dialog.title }}
+        </v-card-title>
+
+        <v-card-text class="pt-6">
+          {{ dialog.text }}
+        </v-card-text>
+
+        <v-divider></v-divider>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="grey"
+            text
+            @click="dialog.isOpened = false"
+          >
+            Ок
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <v-btn
       class="mt-6"
-      :to="'/control_panel/courses/1/lessons/1'"
+      :to="`/control_panel/courses/${this.$route.params.course_id}/lessons/${this.$route.params.lesson_id}`"
     >
       <v-icon>mdi-chevron-left</v-icon>
       <div class="pr-2 pl-1">К уроку</div>
     </v-btn>
     <p class="text-h4 mt-6 mb-6">
-      Материал 1
+      {{ title }}
     </p>
-    <v-form>
+    <v-form v-model="form.valid">
       <v-text-field
         label="Название"
         v-model="form.title"
         :rules="form.titleRules"
         :counter="100"
+        color="white"
       ></v-text-field>
     </v-form>
     <no-ssr>
@@ -33,6 +62,8 @@
     <v-btn
       block
       color="green darken-2"
+      :disabled="!form.valid || !form.body"
+      @click="updateMaterial()"
     >
       Обновить материал
     </v-btn>
@@ -40,7 +71,7 @@
       block
       color="red darken-2"
       class="mt-6"
-      @click="() => {}"
+      @click="deleteMaterial()"
     >
       Удалить материал
     </v-btn>
@@ -51,16 +82,24 @@
 
 export default {
   name: "_material_id",
+  async fetch({store, route, error}) {
+    await store.dispatch('control/loadMaterial', {courseId: route.params.course_id, lessonId: route.params.lesson_id, materialId: route.params.material_id, error})
+  },
   data() {
     return {
+      dialog: {
+        isOpened: false,
+        title: '',
+        text: ''
+      },
       form: {
         valid: false,
-        title: 'Учебник 1',
+        title: '',
         titleRules: [
           v => !!v || 'Название необходимо',
           v => v.length <= 100 || 'Название должно быть короче 100',
         ],
-        body: '<div class="problem-statement">\n<div class="legend"><span style="">\n<p>Реализуйте класс <span style="font-weight:bold;">Date</span>, экземпляры которого при инициализации принимают месяц и день. </p></span><p>При вычитании дат (d1 - d2) должно возвращаться число дней между d1 и d2. </p>\n<p>Число дней должно быть: равно нулю, если d1 и d2 — одна и та же дата, быть больше нуля, если d1 позже d2, быть меньше нуля,\nесли d1 раньше d2.<br> Считайте, что все даты указаны в пределах одного и того же не вискосного года (в феврале 28 дней).</p></di<h3>Пример 1</h<table class="sample-tests"><thea<tr><th>Ввод</th><th>Вывод</t</t</thead><tbod<tr><td><pre>from solution impojan5 = Datjan1 = Datprint(jan5 print(jan1 print(jan1 print(jan5 </pre></td><td</pre></t</t</tbod</tabl<h3>Пример 2</h<table class="sample-tests"><thea<tr><th>Ввод</th><th>Вывод</t</t</thead><tbod<tr><td><pre>from solution impomar5 = Datjan1 = Datprint(mar5 print(jan1 print(jan1 print(mar5 from solution impomar5 = Datjan1 = Datprint(mar5 print(jan1 print(jan1 print(mar5 from solution impomar5 = Datjan1 = Datprint(mar5 print(jan1 print(jan1 print(mar5</pre></td><td></pre></t</t</tbod</ta</div>',
+        body: ''
       },
       cmOptions: {
         tabSize: 4,
@@ -69,6 +108,45 @@ export default {
         lineNumbers: true,
         line: true
       }
+    }
+  },
+  computed: {
+    title() {
+      if ((!!this.$store.getters['control/material'].materialName && !this.form.title) || this.$store.getters['control/material'].materialName !== this.form.title) {
+        this.form.title = this.$store.getters['control/material'].materialName
+      }
+      if ((!!this.$store.getters['control/material'].body && !this.form.body) || this.$store.getters['control/material'].body !== this.form.body) {
+        this.form.body = String(this.$store.getters['control/material'].body)
+      }
+      return this.$store.getters['control/material'].materialName
+    }
+  },
+  methods: {
+    async updateMaterial() {
+      await this.$axios.patch(
+        `control/courses/${this.$route.params.course_id}/lessons/${this.$route.params.lesson_id}/materials/${this.$route.params.material_id}`,
+        {
+          name: this.form.title,
+          body: this.form.body
+        }
+      ).then(() => {
+        this.$nuxt.refresh()
+      }).catch((err) => {
+        this.dialog.title = 'Ошибка'
+        this.dialog.text = err.response.data.message
+        this.dialog.isOpened = true
+      })
+    },
+    async deleteMaterial() {
+      await this.$axios.delete(
+        `control/courses/${this.$route.params.course_id}/lessons/${this.$route.params.lesson_id}/materials/${this.$route.params.material_id}`
+      ).then(() => {
+        this.$router.push(`/control_panel/courses/${this.$route.params.course_id}/lessons/${this.$route.params.lesson_id}`)
+      }).catch((err) => {
+        this.dialog.title = 'Ошибка'
+        this.dialog.text = err.response.data.message
+        this.dialog.isOpened = true
+      })
     }
   }
 }

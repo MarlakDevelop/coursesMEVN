@@ -26,7 +26,7 @@
     >
       <v-col
         v-for="item in groups.filter(item => item.name.toLowerCase().includes(search.toLowerCase()))"
-        :key="item.name"
+        :key="item.id"
         :cols="12"
         height="300px"
         class="mb-3"
@@ -55,19 +55,22 @@
 <script>
 export default {
   name: "index",
+  async fetch({store, error}) {
+    await store.dispatch('control/loadGroups', {error})
+  },
   data() {
     return {
-      search: '',
-      groups: [
-        {
-          name: 'Группа 1',
-          link: '/control_panel/groups/1'
-        },
-        {
-          name: 'Группа 2',
-          link: '/control_panel/groups/2'
+      search: ''
+    }
+  },
+  computed: {
+    groups() {
+      return this.$store.getters['control/groups'].map((item) => {
+        return {
+          ...item,
+          link: `/control_panel/groups/${item.id}`
         }
-      ]
+      })
     }
   }
 }

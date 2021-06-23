@@ -26,7 +26,7 @@
     >
       <v-col
         v-for="item in users.filter(item => item.fullName.toLowerCase().includes(search.toLowerCase()) || item.login.toLowerCase().includes(search.toLowerCase()))"
-        :key="item.fullName"
+        :key="item.id"
         :cols="12"
         height="300px"
         class="mb-3"
@@ -58,46 +58,22 @@
 <script>
 export default {
   name: "index",
+  async fetch({ store, error }){
+    await store.dispatch('control/loadUsers', { error })
+  },
   data() {
     return {
       search: '',
-      users: [
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий',
-          link: '/control_panel/users/1'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий',
-          link: '/control_panel/users/1'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий',
-          link: '/control_panel/users/1'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий',
-          link: '/control_panel/users/1'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий',
-          link: '/control_panel/users/1'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий',
-          link: '/control_panel/users/1'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий',
-          link: '/control_panel/users/1'
+    }
+  },
+  computed: {
+    users() {
+      return this.$store.getters['control/users'].map((item) => {
+        return {
+          ...item,
+          link: `/control_panel/users/${item.id}`
         }
-      ]
+      })
     }
   }
 }

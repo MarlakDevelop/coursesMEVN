@@ -2,13 +2,13 @@
   <div class="wrapper">
     <v-btn
       class="mt-6"
-      :to="'/courses/1/groups/1/lessons/1'"
+      :to="`/courses/${this.$route.params.course_id}/groups/${this.$route.params.group_id}/lessons/${this.$route.params.lesson_id}`"
     >
       <v-icon>mdi-chevron-left</v-icon>
       <div class="pr-2 pl-1">К уроку</div>
     </v-btn>
     <p class="text-h4 mt-6 mb-6">
-      Задача 1
+      {{ title }}
     </p>
     <v-row>
       <v-col
@@ -26,7 +26,10 @@
           dark
         >
           <v-spacer></v-spacer>
-          <v-btn>
+          <input type="file" id="files" ref="files" class="d-none" v-on:change="handleFileUpload()" accept=".zip,.rar,.py,.php,.js,.ts,.pas,.cpp,.vue,.jsx,.html,.css,.sass,.scss,.cs,.java,.txt"/>
+          <v-btn
+            @click="uploadSolution()"
+          >
             Отправить решение <v-icon>mdi-upload</v-icon>
           </v-btn>
           <v-spacer></v-spacer>
@@ -37,7 +40,7 @@
       class="d-flex mt-10"
       v-if="!($vuetify.breakpoint.md || $vuetify.breakpoint.xs || $vuetify.breakpoint.sm)"
     >
-      <v-btn>
+      <v-btn :disabled="!prevLink" :to="prevLink">
         <v-icon>mdi-arrow-left</v-icon> Предыдущая
       </v-btn>
       <v-spacer></v-spacer>
@@ -48,24 +51,26 @@
           :to="item.link"
           icon
         >
-          <v-icon
-            v-if="item.status === 'accepted'"
-            color="green"
-          >
-            mdi-checkbox-marked-circle
-          </v-icon>
-          <v-icon
-            v-else-if="item.status === 'rejected'"
-            color="red"
-          >
-            mdi-close-circle
-          </v-icon>
-          <v-icon
-            v-else-if="item.status === 'waiting'"
-            color="grey"
-          >
-            mdi-clock-time-five
-          </v-icon>
+          <div v-if="!!item.solution">
+            <v-icon
+              v-if="item.solution.status === 'accepted'"
+              color="green"
+            >
+              mdi-checkbox-marked-circle
+            </v-icon>
+            <v-icon
+              v-else-if="item.solution.status === 'rejected'"
+              color="red"
+            >
+              mdi-close-circle
+            </v-icon>
+            <v-icon
+              v-else-if="item.solution.status === 'waiting'"
+              color="grey"
+            >
+              mdi-clock-time-five
+            </v-icon>
+          </div>
           <v-icon
             v-else
             color="grey darken-3"
@@ -75,7 +80,7 @@
         </v-btn>
       </div>
       <v-spacer></v-spacer>
-      <v-btn>
+      <v-btn :disabled="!nextLink" :to="nextLink">
         Следующая <v-icon>mdi-arrow-right</v-icon>
       </v-btn>
     </div>
@@ -86,38 +91,93 @@
 
 export default {
   name: "_task_id",
-  data() {
-    return {
-      body: '<div class="problem-statement">\n<div class="legend"><span style="">\n<p>Реализуйте класс <span style="font-weight:bold;">Date</span>, экземпляры которого при инициализации принимают месяц и день. </p></span><p>При вычитании дат (d1 - d2) должно возвращаться число дней между d1 и d2. </p>\n<p>Число дней должно быть: равно нулю, если d1 и d2 — одна и та же дата, быть больше нуля, если d1 позже d2, быть меньше нуля,\nесли d1 раньше d2.<br> Считайте, что все даты указаны в пределах одного и того же не вискосного года (в феврале 28 дней).</p></di<h3>Пример 1</h<table class="sample-tests"><thea<tr><th>Ввод</th><th>Вывод</t</t</thead><tbod<tr><td><pre>from solution impojan5 = Datjan1 = Datprint(jan5 print(jan1 print(jan1 print(jan5 </pre></td><td</pre></t</t</tbod</tabl<h3>Пример 2</h<table class="sample-tests"><thea<tr><th>Ввод</th><th>Вывод</t</t</thead><tbod<tr><td><pre>from solution impomar5 = Datjan1 = Datprint(mar5 print(jan1 print(jan1 print(mar5 from solution impomar5 = Datjan1 = Datprint(mar5 print(jan1 print(jan1 print(mar5 from solution impomar5 = Datjan1 = Datprint(mar5 print(jan1 print(jan1 print(mar5</pre></td><td></pre></t</t</tbod</ta</div>',
-      tasks: [
-        {
-          link: '/courses/1/groups/1/lessons/1/tasks/1/solutions/1',
-          status: 'accepted'
-        },
-        {
-          link: '/courses/1/groups/1/lessons/1/tasks/2/solutions/2',
-          status: 'accepted'
-        },
-        {
-          link: '/courses/1/groups/1/lessons/1/tasks/3/solutions/3',
-          status: 'accepted'
-        },
-        {
-          link: '/courses/1/groups/1/lessons/1/tasks/4/solutions/4',
-          status: 'accepted'
-        },
-        {
-          link: '/courses/1/groups/1/lessons/1/tasks/5/solutions/5',
-          status: 'rejected'
-        },
-        {
-          link: '/courses/1/groups/1/lessons/1/tasks/6/solutions/6',
-          status: 'waiting'
-        },
-        {
-          link: '/courses/1/groups/1/lessons/1/tasks/7'
-        },
-      ]
+
+  async fetch({ store, route, error }){
+    await store.dispatch('student/loadTask', {
+      courseId: route.params.course_id,
+      groupId: route.params.group_id,
+      lessonId: route.params.lesson_id,
+      taskId: route.params.task_id,
+      error
+    })
+  },
+  computed: {
+    title() {
+      return this.$store.getters['student/task'].taskName
+    },
+    body() {
+      return this.$store.getters['student/task'].body
+    },
+    tasks() {
+      return this.$store.getters['student/task'].tasks.map((elem) => {
+        return {
+          ...elem,
+          link: !!elem.solution
+            ? `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${elem.id}/solutions/${elem.solution.id}`
+            : `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${elem.id}`
+        }
+      })
+    },
+    nextLink() {
+      if (this.$store.getters['student/task'].tasks.map((elem) => {
+        return elem.id
+      }).indexOf(Number(this.$route.params.task_id)) + 1 >= this.$store.getters['student/task'].tasks.length) {
+        return null
+      } else {
+        const nextTask = this.$store.getters['student/task'].tasks[this.$store.getters['student/task'].tasks.map((elem) => {
+          return elem.id
+        }).indexOf(Number(this.$route.params.task_id)) + 1]
+        return !!nextTask.solution
+          ? `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${nextTask.id}/solutions/${nextTask.solution.id}`
+          : `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${nextTask.id}`
+      }
+    },
+    prevLink() {
+      if (this.$store.getters['student/task'].tasks.map((elem) => {
+        return elem.id
+      }).indexOf(Number(this.$route.params.task_id)) - 1 < 0) {
+        return null
+      } else {
+        const prevTask = this.$store.getters['student/task'].tasks[this.$store.getters['student/task'].tasks.map((elem) => {
+          return elem.id
+        }).indexOf(Number(this.$route.params.task_id)) - 1]
+
+        return !!prevTask.solution
+          ? `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${prevTask.id}/solutions/${prevTask.solution.id}`
+          : `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${prevTask.id}`
+      }
+    }
+  },
+  methods: {
+    uploadSolution() {
+      this.$refs.files.click();
+    },
+    async handleFileUpload() {
+      try {
+        const file = this.$refs.files.files[0]
+        if (!file) {
+          return
+        }
+        const formData = new FormData()
+        formData.append('file', file)
+        await this.$axios.$post(
+          `student/courses/${this.$route.params.course_id}/groups/${this.$route.params.group_id}/lessons/${this.$route.params.lesson_id}/tasks/${this.$route.params.task_id}/solutions/send_solution`,
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        ).then((res) => {
+          this.$router.push(`/courses/${this.$route.params.course_id}/groups/${this.$route.params.group_id}/lessons/${this.$route.params.lesson_id}/tasks/${this.$route.params.task_id}/solutions/${res.solutionId}`)
+        }).catch((err) => {
+          this.dialog.title = 'Ошибка'
+          this.dialog.text = err.response.data.message
+          this.dialog.isOpened = true
+        })
+      } catch (e) {
+        console.log(e)
+      }
     }
   }
 }

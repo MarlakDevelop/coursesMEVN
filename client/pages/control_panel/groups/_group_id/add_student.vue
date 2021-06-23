@@ -1,8 +1,36 @@
 <template>
   <div class="wrapper">
+    <v-dialog
+      v-model="dialog.isOpened"
+      width="500"
+      dark
+    >
+      <v-card>
+        <v-card-title class="text-h5 grey darken-4">
+          {{ dialog.title }}
+        </v-card-title>
+
+        <v-card-text class="pt-6">
+          {{ dialog.text }}
+        </v-card-text>
+
+        <v-divider></v-divider>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="grey"
+            text
+            @click="dialog.isOpened = false"
+          >
+            Ок
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <v-btn
       class="mt-6 mb-6"
-      :to="'/control_panel/groups/1'"
+      :to="`/control_panel/groups/${this.$route.params.group_id}`"
     >
       <v-icon>
         mdi-chevron-left
@@ -27,7 +55,7 @@
     >
       <v-col
         v-for="item in users.filter(item => item.fullName.toLowerCase().includes(search.toLowerCase()) || item.login.toLowerCase().includes(search.toLowerCase()))"
-        :key="item.fullName"
+        :key="item.id"
         :cols="12"
         height="300px"
         class="mb-3"
@@ -59,39 +87,41 @@
 <script>
 export default {
   name: "add_student",
+  async fetch({store, route, error}) {
+    await store.dispatch('control/loadUsersExcludeStudents', {groupId: route.params.group_id, error})
+  },
   data() {
     return {
-      search: '',
-      users: [
+      dialog: {
+        isOpened: false,
+        title: '',
+        text: ''
+      },
+      search: ''
+    }
+  },
+  computed: {
+    users() {
+      return this.$store.getters['control/users']
+    }
+  },
+  methods: {
+    async addStudent(userId) {
+      await this.$axios.$post(
+        `/control_panel/groups/${this.$route.params.group_id}/students`,
         {
-          login: 'user',
-          fullName: 'Гурин Аркадий'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий'
-        },
-        {
-          login: 'user',
-          fullName: 'Гурин Аркадий'
+          userId
         }
-      ]
+      ).then(() => {
+        this.$nuxt.refresh()
+        this.dialog.title = 'Успех'
+        this.dialog.text = 'Студент был добавлен в группу'
+        this.dialog.isOpened = true
+      }).catch((err) => {
+        this.dialog.title = 'Ошибка'
+        this.dialog.text = err.response.data.message
+        this.dialog.isOpened = true
+      })
     }
   }
 }

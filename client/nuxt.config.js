@@ -39,8 +39,19 @@ export default {
     '@nuxtjs/vuetify',
   ],
 
+  modules: [
+    // With Options
+    ['nuxt-highlightjs', {
+      style: 'darcula'
+    }],
+    '@nuxtjs/axios'
+  ],
+
   // Axios module configuration: https://go.nuxtjs.dev/config-axios
-  axios: {},
+  axios: {
+    baseURL: 'http://localhost:5000/api/v1/',
+    withCredentials: true
+  },
 
   // Vuetify module configuration: https://go.nuxtjs.dev/config-vuetify
   vuetify: {

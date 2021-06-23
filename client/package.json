@@ -13,6 +13,7 @@
     "core-js": "^3.9.1",
     "mavon-editor": "^2.9.1",
     "nuxt": "^2.15.3",
+    "nuxt-highlightjs": "^1.0.1",
     "vue-codemirror": "^4.0.6"
   },
   "devDependencies": {

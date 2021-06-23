@@ -2,7 +2,7 @@
   <div class="wrapper">
     <v-btn
       class="mt-6"
-      :to="'/teacher_panel/courses/1/groups/1/lessons/1'"
+      :to="`/teacher_panel/courses/${this.$route.params.course_id}/groups/${this.$route.params.group_id}/lessons/${( this.$route.params.lesson_id )}`"
     >
       <v-icon>
         mdi-chevron-left
@@ -12,7 +12,7 @@
       </div>
     </v-btn>
     <p class="text-h4 mt-6 pt-6">
-      Урок 1
+      {{ groupName }}
     </p>
     <v-divider></v-divider>
     <p class="text-h5 mt-6 mb-3">
@@ -21,7 +21,7 @@
     <v-row>
       <v-col
         v-for="item in students"
-        :key="item.name"
+        :key="item.id"
         :cols="12"
       >
         <v-card>
@@ -31,11 +31,11 @@
                 {{ item.fullName }}
               </div>
               <v-progress-linear
-                v-model="item.tasks_solved / tasks_total * 100"
+                v-model="item.tasksAccepted / tasksTotal * 100"
                 color="green"
               ></v-progress-linear>
               <div class="text-caption">
-                <b class="green--text text--accent-4">{{ item.tasks_solved }}</b> / {{ tasks_total }} задач зачтено
+                <b class="green--text text--accent-4">{{ item.tasksAccepted }}</b> / {{ tasksTotal }} задач зачтено
               </div>
             </v-list-item-content>
           </v-list-item>
@@ -48,31 +48,21 @@
 <script>
 export default {
   name: "index",
-  data() {
-    return {
-      tasks_total: 7,
-      students: [
-        {
-          fullName: 'Гурин Аркадий',
-          tasks_solved: 7,
-        },
-        {
-          fullName: 'Гурин Аркадий',
-          tasks_solved: 6,
-        },
-        {
-          fullName: 'Гурин Аркадий',
-          tasks_solved: 4,
-        },
-        {
-          fullName: 'Гурин Аркадий',
-          tasks_solved: 2,
-        },
-        {
-          fullName: 'Гурин Аркадий',
-          tasks_solved: 0,
-        }
-      ]
+  async fetch({ store, route, error }){
+    await store.dispatch('teacher/loadLessonProgress', { courseId: route.params.course_id, groupId: route.params.group_id, lessonId: route.params.lesson_id, error })
+  },
+  computed: {
+    groupName() {
+      return this.$store.getters['teacher/lesson'].lessonName
+    },
+    students() {
+      return this.$store.getters['teacher/lesson'].students
+    },
+    isVisible() {
+      return this.$store.getters['teacher/lesson'].isVisible
+    },
+    tasksTotal() {
+      return this.$store.getters['teacher/lesson'].tasksTotal
     }
   }
 }
