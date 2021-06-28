@@ -102,12 +102,18 @@ import Logo from '~/components/Logo.vue'
 import VuetifyLogo from '~/components/VuetifyLogo.vue'
 
 export default {
+  middleware: ['auth'],
   components: {
     Logo,
     VuetifyLogo
   },
   async fetch({store}) {
-    await store.dispatch('main/loadCoursesGroupsAndIsController')
+    await store.dispatch('main/loadCoursesGroupsAndIsController', {store})
+  },
+  head() {
+    return {
+      title: 'Главная',
+    }
   },
   computed: {
     courses() {

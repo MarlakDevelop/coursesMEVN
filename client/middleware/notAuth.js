@@ -1,5 +1,5 @@
 import axios from 'axios'
-import settings from '../nuxt.config'
+import settings from "@/nuxt.config";
 
 export default async function({store, redirect}) {
   if (store.getters['hasToken']) {
@@ -12,10 +12,7 @@ export default async function({store, redirect}) {
           }
         }
       )
-    } catch {
-      redirect('/signin')
-    }
-  } else {
-    redirect('/signin')
+      redirect('/')
+    } catch (e) {}
   }
 }

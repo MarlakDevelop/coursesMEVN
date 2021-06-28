@@ -81,6 +81,7 @@
 <script>
 export default {
   name: "create",
+  middleware: ['auth'],
   data() {
     return {
       dialog: {
@@ -108,6 +109,11 @@ export default {
       },
     }
   },
+  head() {
+    return {
+      title: 'Создание пользователя',
+    }
+  },
   methods: {
     async createUser() {
       await this.$axios.post(
@@ -116,6 +122,11 @@ export default {
           login: this.form.login,
           fullName: this.form.fullName,
           password: this.form.password
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
         }
       ).then(() => {
         this.dialog.title = 'Успех'

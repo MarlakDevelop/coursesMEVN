@@ -105,8 +105,14 @@
 <script>
 export default {
   name: "index",
+  middleware: ['auth'],
   async fetch({ store, route, error }){
-    await store.dispatch('teacher/loadLesson', { courseId: route.params.course_id, groupId: route.params.group_id, lessonId: route.params.lesson_id, error })
+    await store.dispatch('teacher/loadLesson', { courseId: route.params.course_id, groupId: route.params.group_id, lessonId: route.params.lesson_id, error, store })
+  },
+  head() {
+    return {
+      title: this.lessonName,
+    }
   },
   computed: {
     lessonName() {
@@ -138,6 +144,11 @@ export default {
         `/teacher/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/set_visibility`,
         {
           visible: !this.isVisible
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
         }
       ).then(() => {
         this.$store.dispatch('teacher/changeLessonVisibility')

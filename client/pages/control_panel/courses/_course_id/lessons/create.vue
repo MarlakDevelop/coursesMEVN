@@ -75,6 +75,7 @@
 <script>
 export default {
   name: "create",
+  middleware: ['auth'],
   data() {
     return {
       dialog: {
@@ -97,6 +98,11 @@ export default {
       }
     }
   },
+  head() {
+    return {
+      title: 'Создание урока',
+    }
+  },
   methods: {
     async createLesson() {
       await this.$axios.post(
@@ -104,6 +110,11 @@ export default {
         {
           name: this.form.title,
           rating: Number(this.form.rating)
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
         }
       ).then(() => {
         this.dialog.title = 'Успех'

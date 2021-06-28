@@ -41,8 +41,14 @@
 <script>
 export default {
   name: "profile",
+  middleware: ['auth'],
   async fetch({store}) {
-    await store.dispatch('main/loadProfile')
+    await store.dispatch('main/loadProfile', {store})
+  },
+  head() {
+    return {
+      title: this.fullName,
+    }
   },
   computed: {
     courses() {
@@ -54,7 +60,9 @@ export default {
   },
   methods: {
     logout() {
+      const Cookie = process.client ? require('js-cookie') : undefined
       this.$store.dispatch('logout')
+      Cookie.remove('token')
       this.$router.push('/signin')
     }
   }

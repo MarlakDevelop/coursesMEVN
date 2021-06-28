@@ -97,8 +97,9 @@
 <script>
 export default {
   name: "create",
+  middleware: ['auth'],
   async fetch({store, error}) {
-    await store.dispatch('control/loadCourses', {error})
+    await store.dispatch('control/loadCourses', {error, store})
   },
   data() {
     return {
@@ -114,8 +115,13 @@ export default {
           v => !!v || 'Название необходимо',
           v => v.length <= 100 || 'Название должно быть короче 100',
         ],
-        courseId: null,
+        courseId: '',
       }
+    }
+  },
+  head() {
+    return {
+      title: 'Создание группы',
     }
   },
   computed: {
@@ -125,15 +131,21 @@ export default {
   },
   methods: {
     async createGroup() {
+      await console.log(this.form.courseId)
       await this.$axios.$post(
         `control/groups`,
         {
           name: this.form.title,
           courseId: this.form.courseId
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
         }
       ).then(() => {
         this.dialog.title = 'Успех'
-        this.dialog.text = 'Курс успешно создан'
+        this.dialog.text = 'Группа успешно создана'
         this.dialog.isOpened = true
         this.form.title = ''
         this.form.courseId = null

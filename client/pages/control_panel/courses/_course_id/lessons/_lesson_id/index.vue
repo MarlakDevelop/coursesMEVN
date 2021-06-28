@@ -151,8 +151,9 @@
 <script>
 export default {
   name: "index",
+  middleware: ['auth'],
   async fetch({ store, route, error }){
-    await store.dispatch('control/loadLesson', { courseId: route.params.course_id, lessonId: route.params.lesson_id, error })
+    await store.dispatch('control/loadLesson', { courseId: route.params.course_id, lessonId: route.params.lesson_id, error, store })
   },
   data() {
     return {
@@ -164,11 +165,13 @@ export default {
       form: {
         valid: false,
         title: '',
+        titleNeedUpdate: true,
         titleRules: [
           v => !!v || 'Название необходимо',
           v => v.length <= 100 || 'Название должно быть короче 100',
         ],
         rating: '',
+        ratingNeedUpdate: true,
         ratingRules: [
           v => !!v || 'Рейтинг необходим',
           v => /^\d*\.?\d*$/.test(v) || 'Рейтинг должен быть целочисленным или дробным числом',
@@ -176,13 +179,20 @@ export default {
       }
     }
   },
+  head() {
+    return {
+      title: this.title,
+    }
+  },
   computed: {
     title() {
-      if ((!!this.$store.getters['control/lesson'].lessonName && !this.form.title) || this.$store.getters['control/lesson'].lessonName !== this.form.title) {
-        this.form.title = this.$store.getters['control/lesson'].lessonName
+      if (!!this.$store.getters['control/lesson'].lessonName && !this.form.title && this.form.titleNeedUpdate) {
+        this.form.title = Object.assign(this.$store.getters['control/lesson'].lessonName)
+        this.form.titleNeedUpdate = false
       }
-      if ((!!this.$store.getters['control/lesson'].rating && !this.form.rating) || this.$store.getters['control/lesson'].rating !== this.form.rating) {
-        this.form.rating = String(this.$store.getters['control/lesson'].rating)
+      if (!!this.$store.getters['control/lesson'].rating && !this.form.rating && this.form.ratingNeedUpdate) {
+        this.form.rating = Object.assign(this.$store.getters['control/lesson'].rating)
+        this.form.ratingNeedUpdate = false
       }
       return this.$store.getters['control/lesson'].lessonName
     },
@@ -210,6 +220,11 @@ export default {
         {
           name: this.form.title,
           rating: Number(this.form.rating)
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
         }
       ).then(() => {
         this.$nuxt.refresh()
@@ -221,7 +236,12 @@ export default {
     },
     async deleteLesson() {
       await this.$axios.$delete(
-        `control/courses/${this.$route.params.course_id}/lessons/${this.$route.params.lesson_id}`
+        `control/courses/${this.$route.params.course_id}/lessons/${this.$route.params.lesson_id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
+        }
       ).then(() => {
         this.$router.push(`/control_panel/courses/${this.$route.params.course_id}`)
       }).catch((err) => {

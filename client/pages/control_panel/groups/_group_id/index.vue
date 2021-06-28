@@ -117,8 +117,9 @@
 <script>
 export default {
   name: "_group_id",
+  middleware: ['auth'],
   async fetch({store, route, error}) {
-    await store.dispatch('control/loadGroup', {groupId: route.params.group_id, error})
+    await store.dispatch('control/loadGroup', {groupId: route.params.group_id, error, store})
   },
   data() {
     return {
@@ -135,6 +136,11 @@ export default {
           v => v.length <= 100 || 'Название должно быть короче 100',
         ]
       }
+    }
+  },
+  head() {
+    return {
+      title: this.title,
     }
   },
   computed: {
@@ -157,6 +163,11 @@ export default {
         `control/groups/${this.$route.params.group_id}`,
         {
           name: this.form.title
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
         }
       ).then(() => {
         this.$nuxt.refresh()
@@ -170,7 +181,9 @@ export default {
       await this.$axios.$delete(
         `control/groups/${this.$route.params.group_id}/students/${studentId}`,
         {
-          name: this.form.title
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
         }
       ).then(() => {
         this.$nuxt.refresh()

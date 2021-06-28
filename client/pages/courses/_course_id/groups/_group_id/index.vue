@@ -52,8 +52,14 @@
 <script>
 export default {
   name: "index",
+  middleware: ['auth'],
   async fetch({ store, route, error }){
-    await store.dispatch('student/loadCourse', { courseId: route.params.course_id, groupId: route.params.group_id, error })
+    await store.dispatch('student/loadCourse', { courseId: route.params.course_id, groupId: route.params.group_id, error, store })
+  },
+  head() {
+    return {
+      title: this.courseName,
+    }
   },
   computed: {
     courseName() {

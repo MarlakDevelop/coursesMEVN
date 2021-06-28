@@ -82,8 +82,9 @@
 
 export default {
   name: "_material_id",
+  middleware: ['auth'],
   async fetch({store, route, error}) {
-    await store.dispatch('control/loadMaterial', {courseId: route.params.course_id, lessonId: route.params.lesson_id, materialId: route.params.material_id, error})
+    await store.dispatch('control/loadMaterial', {courseId: route.params.course_id, lessonId: route.params.lesson_id, materialId: route.params.material_id, error, store})
   },
   data() {
     return {
@@ -95,10 +96,12 @@ export default {
       form: {
         valid: false,
         title: '',
+        titleNeedUpdate: true,
         titleRules: [
           v => !!v || 'Название необходимо',
           v => v.length <= 100 || 'Название должно быть короче 100',
         ],
+        bodyNeedUpdate: true,
         body: ''
       },
       cmOptions: {
@@ -110,13 +113,20 @@ export default {
       }
     }
   },
+  head() {
+    return {
+      title: this.title,
+    }
+  },
   computed: {
     title() {
-      if ((!!this.$store.getters['control/material'].materialName && !this.form.title) || this.$store.getters['control/material'].materialName !== this.form.title) {
-        this.form.title = this.$store.getters['control/material'].materialName
+      if (!!this.$store.getters['control/material'].materialName && !this.form.title && this.form.titleNeedUpdate) {
+        this.form.title = Object.assign(this.$store.getters['control/material'].materialName)
+        this.form.titleNeedUpdate = false
       }
-      if ((!!this.$store.getters['control/material'].body && !this.form.body) || this.$store.getters['control/material'].body !== this.form.body) {
-        this.form.body = String(this.$store.getters['control/material'].body)
+      if (!!this.$store.getters['control/material'].body && !this.form.body && this.form.bodyNeedUpdate) {
+        this.form.body = Object.assign(this.$store.getters['control/material'].body)
+        this.form.bodyNeedUpdate = false
       }
       return this.$store.getters['control/material'].materialName
     }
@@ -128,6 +138,11 @@ export default {
         {
           name: this.form.title,
           body: this.form.body
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
         }
       ).then(() => {
         this.$nuxt.refresh()
@@ -139,7 +154,12 @@ export default {
     },
     async deleteMaterial() {
       await this.$axios.delete(
-        `control/courses/${this.$route.params.course_id}/lessons/${this.$route.params.lesson_id}/materials/${this.$route.params.material_id}`
+        `control/courses/${this.$route.params.course_id}/lessons/${this.$route.params.lesson_id}/materials/${this.$route.params.material_id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
+        }
       ).then(() => {
         this.$router.push(`/control_panel/courses/${this.$route.params.course_id}/lessons/${this.$route.params.lesson_id}`)
       }).catch((err) => {

@@ -25,14 +25,28 @@ export const mutations = {
 }
 
 export const actions = {
-  async loadCoursesGroupsAndIsController({commit}) {
-    const data = await this.$axios.$get('main')
+  async loadCoursesGroupsAndIsController({commit}, {store}) {
+    const data = await this.$axios.$get(
+      'main',
+      {
+        headers: {
+          'Authorization': `Bearer ${store?.getters['token']}`
+        }
+      }
+    )
     commit('setStudyingCourses', !!data['studyingCourses'] ? data['studyingCourses'] : [] )
     commit('setTeachingGroups', !!data['teachingGroups'] ? data['teachingGroups'] : [])
     commit('setController', !!data['isController'] ? data['isController'] : false)
   },
-  async loadProfile({commit}) {
-    const data = await this.$axios.$get('main/profile')
+  async loadProfile({commit}, {store}) {
+    const data = await this.$axios.$get(
+      'main/profile',
+      {
+        headers: {
+          'Authorization': `Bearer ${store?.getters['token']}`
+        }
+      }
+    )
     commit('setProfileFullName', data['fullName'] ? data['fullName'] : '' )
     commit('setProfileRatingCards', data['courses'] ? data['courses'] : [])
   }

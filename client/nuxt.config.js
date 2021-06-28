@@ -3,7 +3,7 @@ import colors from 'vuetify/es5/util/colors'
 export default {
   // Global page headers: https://go.nuxtjs.dev/config-head
   head: {
-    titleTemplate: '%s - Сourses',
+    titleTemplate: '%s - Курсы от Анонима',
     title: 'Сourses',
     htmlAttrs: {
       lang: 'en'
@@ -49,7 +49,7 @@ export default {
 
   // Axios module configuration: https://go.nuxtjs.dev/config-axios
   axios: {
-    baseURL: 'http://localhost:5000/api/v1/',
+    baseURL: 'https://coursesfromanonymous.ru/api/v1/',
     withCredentials: true
   },
 

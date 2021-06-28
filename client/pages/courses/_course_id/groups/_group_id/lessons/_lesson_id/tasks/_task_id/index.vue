@@ -26,7 +26,7 @@
           dark
         >
           <v-spacer></v-spacer>
-          <input type="file" id="files" ref="files" class="d-none" v-on:change="handleFileUpload()" accept=".zip,.rar,.py,.php,.js,.ts,.pas,.cpp,.vue,.jsx,.html,.css,.sass,.scss,.cs,.java,.txt"/>
+          <input type="file" id="files" ref="files" class="d-none" v-on:change="handleFileUpload()" accept=".zip,.rar,.py,.php,.js,.ts,.pas,.cpp,.vue,.jsx,.html,.css,.sass,.scss,.cs,.java,.txt,.tsx,.c"/>
           <v-btn
             @click="uploadSolution()"
           >
@@ -40,9 +40,6 @@
       class="d-flex mt-10"
       v-if="!($vuetify.breakpoint.md || $vuetify.breakpoint.xs || $vuetify.breakpoint.sm)"
     >
-      <v-btn :disabled="!prevLink" :to="prevLink">
-        <v-icon>mdi-arrow-left</v-icon> Предыдущая
-      </v-btn>
       <v-spacer></v-spacer>
       <div class="d-flex justify-center">
         <v-btn
@@ -80,9 +77,6 @@
         </v-btn>
       </div>
       <v-spacer></v-spacer>
-      <v-btn :disabled="!nextLink" :to="nextLink">
-        Следующая <v-icon>mdi-arrow-right</v-icon>
-      </v-btn>
     </div>
   </div>
 </template>
@@ -91,15 +85,20 @@
 
 export default {
   name: "_task_id",
-
+  middleware: ['auth'],
   async fetch({ store, route, error }){
     await store.dispatch('student/loadTask', {
       courseId: route.params.course_id,
       groupId: route.params.group_id,
       lessonId: route.params.lesson_id,
       taskId: route.params.task_id,
-      error
+      error, store
     })
+  },
+  head() {
+    return {
+      title: this.title,
+    }
   },
   computed: {
     title() {
@@ -117,35 +116,6 @@ export default {
             : `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${elem.id}`
         }
       })
-    },
-    nextLink() {
-      if (this.$store.getters['student/task'].tasks.map((elem) => {
-        return elem.id
-      }).indexOf(Number(this.$route.params.task_id)) + 1 >= this.$store.getters['student/task'].tasks.length) {
-        return null
-      } else {
-        const nextTask = this.$store.getters['student/task'].tasks[this.$store.getters['student/task'].tasks.map((elem) => {
-          return elem.id
-        }).indexOf(Number(this.$route.params.task_id)) + 1]
-        return !!nextTask.solution
-          ? `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${nextTask.id}/solutions/${nextTask.solution.id}`
-          : `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${nextTask.id}`
-      }
-    },
-    prevLink() {
-      if (this.$store.getters['student/task'].tasks.map((elem) => {
-        return elem.id
-      }).indexOf(Number(this.$route.params.task_id)) - 1 < 0) {
-        return null
-      } else {
-        const prevTask = this.$store.getters['student/task'].tasks[this.$store.getters['student/task'].tasks.map((elem) => {
-          return elem.id
-        }).indexOf(Number(this.$route.params.task_id)) - 1]
-
-        return !!prevTask.solution
-          ? `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${prevTask.id}/solutions/${prevTask.solution.id}`
-          : `/courses/${this.$route?.params.course_id}/groups/${this.$route?.params.group_id}/lessons/${this.$route?.params.lesson_id}/tasks/${prevTask.id}`
-      }
     }
   },
   methods: {
@@ -165,6 +135,7 @@ export default {
           formData,
           {
             headers: {
+              'Authorization': `Bearer ${this.$store.getters['token']}`,
               'Content-Type': 'multipart/form-data'
             }
           }

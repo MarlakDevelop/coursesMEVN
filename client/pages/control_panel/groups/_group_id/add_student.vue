@@ -73,6 +73,7 @@
             <v-list-item-action>
               <v-btn
                 class="green darken-2"
+                @click="addStudent(item.id)"
               >
                 Добавить
               </v-btn>
@@ -87,8 +88,9 @@
 <script>
 export default {
   name: "add_student",
+  middleware: ['auth'],
   async fetch({store, route, error}) {
-    await store.dispatch('control/loadUsersExcludeStudents', {groupId: route.params.group_id, error})
+    await store.dispatch('control/loadUsersExcludeStudents', {groupId: route.params.group_id, error, store})
   },
   data() {
     return {
@@ -100,6 +102,11 @@ export default {
       search: ''
     }
   },
+  head() {
+    return {
+      title: 'Добавить студента',
+    }
+  },
   computed: {
     users() {
       return this.$store.getters['control/users']
@@ -108,9 +115,14 @@ export default {
   methods: {
     async addStudent(userId) {
       await this.$axios.$post(
-        `/control_panel/groups/${this.$route.params.group_id}/students`,
+        `/control/groups/${this.$route.params.group_id}/students`,
         {
           userId
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
         }
       ).then(() => {
         this.$nuxt.refresh()

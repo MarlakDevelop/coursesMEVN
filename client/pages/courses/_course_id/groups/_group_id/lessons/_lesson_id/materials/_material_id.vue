@@ -19,14 +19,20 @@
 <script>
 export default {
   name: "_material_id",
+  middleware: ['auth'],
   async fetch({ store, route, error }){
     await store.dispatch('student/loadMaterial', {
       courseId: route.params.course_id,
       groupId: route.params.group_id,
       lessonId: route.params.lesson_id,
       materialId: route.params.material_id,
-      error
+      error, store
     })
+  },
+  head() {
+    return {
+      title: this.title,
+    }
   },
   computed: {
     title() {

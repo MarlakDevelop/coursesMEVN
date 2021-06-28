@@ -1,57 +1,86 @@
 const {Router} = require('express')
 const config = require('config')
+const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
 const {check, validationResult} = require('express-validator')
+const User = require('../../models/User.model')
+const Student = require('../../models/Student.model')
+const Course = require('../../models/Course.model')
+const Lesson = require('../../models/Lesson.model')
+const Task = require('../../models/Task.model')
+const Material = require('../../models/Material.model')
+const Group = require('../../models/Group.model')
+const Solution = require('../../models/Solution.model')
+const SubSolution = require('../../models/SubSolution.model')
+const Verdict = require('../../models/Verdict.model')
 const auth = require('../../middleware/auth.middleware')
+const control = require('../../middleware/control.middleware')
 const router = Router()
+
+// /api/v1/control/controllers
+router.post(
+  '/controllers',
+  [
+    check(
+      'login',
+      'Поле логина должно быть заполнено и иметь длину максимум 32'
+    ).exists().isLength({ max: 32 }),
+    check(
+      'password',
+      'Поле пароля должно быть заполнено и иметь длину максимум 32'
+    ).exists().isLength({ max: 32 }),
+    check(
+      'fullName',
+      'Поле имени должно быть заполнено и иметь длину максимум 100'
+    ).exists().isLength({ max: 100 }),
+    check(
+      'secret',
+      'Секретный ключ должен быть указан'
+    ).exists()
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          errors: errors.array(),
+          message: 'Некорректные данные при попытке создать контроллера'
+        })
+      }
+      const {secret, login, password, fullName} = req.body
+      if (secret !== config.get('secret'))
+        return res.status(403).json({message: 'Отказано в доступе, ключ неверен'})
+      const candidate = await User.findOne({ login })
+      if (candidate)
+        return res.status(400).json({ message: 'Такой пользователь уже существует' })
+      const hashedPassword = await bcrypt.hash(password, 12)
+      const user = new User({ login, password: hashedPassword, fullName, isController: true, passwordChanged: Date.now() })
+      await user.save()
+      res.json({
+        message: 'Контроллер создан успешно',
+        id: user._id
+      })
+    } catch (e) {
+      res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
+    }
+  })
 
 // /api/v1/control/users
 router.get(
   '/users',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
-      res.json([
-        {
-          id: 7,
-          fullName: 'Аркадий Гурин',
-          login: 'user'
-        },
-        {
-          id: 6,
-          fullName: 'Аркадий Гурин',
-          login: 'user'
-        },
-        {
-          id: 5,
-          fullName: 'Аркадий Гурин',
-          login: 'user'
-        },
-        {
-          id: 4,
-          fullName: 'Аркадий Гурин',
-          login: 'user'
-        },
-        {
-          id: 3,
-          fullName: 'Аркадий Гурин',
-          login: 'user'
-        },
-        {
-          id: 2,
-          fullName: 'Аркадий Гурин',
-          login: 'user'
-        },
-        {
-          id: 1,
-          fullName: 'Аркадий Гурин',
-          login: 'user'
+      const users = await User.find({}, 'login fullName').sort('login').lean()
+      res.json(users.map((item) => {
+        return {
+          ...item,
+          id: item._id
         }
-      ])
+      }))
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
     }
@@ -61,7 +90,8 @@ router.get(
 router.post(
   '/users',
   [
-    // auth
+    auth,
+    control,
     check(
       'login',
       'Поле логина должно быть заполнено и иметь длину максимум 32'
@@ -78,15 +108,22 @@ router.post(
   async (req, res) => {
     try {
       const errors = validationResult(req)
-
       if (!errors.isEmpty()) {
         return res.status(400).json({
           errors: errors.array(),
           message: 'Некорректные данные при попытке создать пользователя'
         })
       }
+      const {login, password, fullName} = req.body
+      const candidate = await User.findOne({ login })
+      if (candidate)
+        return res.status(400).json({ message: 'Такой пользователь уже существует' })
+      const hashedPassword = await bcrypt.hash(password, 12)
+      const user = new User({ login, password: hashedPassword, fullName, passwordChanged: Date.now() })
+      await user.save()
       res.json({
-        message: 'Пользователь создан успешно'
+        message: 'Пользователь создан успешно',
+        id: user._id
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -97,17 +134,15 @@ router.post(
 router.get(
   '/users/:userId',
   [
-    // auth
+    auth,
+    control
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
-      res.json({
-        login: 'user',
-        fullName: 'Аркадий Гурин'
-      })
+      const user = await User.findById(req.params.userId, 'login fullName').lean()
+      if (!user)
+        return res.status(404).json({message: 'Пользователь не найден'})
+      res.json(user)
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
     }
@@ -117,7 +152,8 @@ router.get(
 router.patch(
   '/users/:userId',
   [
-    // auth
+    auth,
+    control,
     check(
       'login',
       'Поле логина должно иметь длину максимум 32'
@@ -134,13 +170,27 @@ router.patch(
   async (req, res) => {
     try {
       const errors = validationResult(req)
-
       if (!errors.isEmpty()) {
         return res.status(400).json({
           errors: errors.array(),
           message: 'Некорректные данные при попытке обновить пользователя'
         })
       }
+      const {login, password, fullName} = req.body
+      const candidate = await User.findOne({login})
+      let fields = {}
+      if (!!login && !candidate)
+        fields.login = login
+      if (!!fullName)
+        fields.fullName = fullName
+      if (!!password) {
+        fields.password = await bcrypt.hash(password, 12)
+        fields.passwordChanged = Date.now()
+      }
+      // Да, да. Я король if-else
+      const result = await User.findByIdAndUpdate(req.params.userId, fields)
+      if (!result)
+        return res.status(404).json({message: 'Пользователь не найден'})
       res.json({
         message: 'Пользователь успешно обновлён'
       })
@@ -153,10 +203,18 @@ router.patch(
 router.delete(
   '/users/:userId',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
+      const result = await User.findByIdAndDelete(req.params.userId)
+      if (!result)
+        return res.status(404).json({message: 'Пользователь не найден'})
+      await Student.deleteMany({user: req.params.userId})
+      await Solution.deleteMany({user: req.params.userId})
+      await SubSolution.deleteMany({user: req.params.userId})
+      await Verdict.deleteMany({user: req.params.userId})
       res.json({
         message: 'Пользователь успешно удалён'
       })
@@ -169,23 +227,18 @@ router.delete(
 router.get(
   '/courses',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
-      res.json([
-        {
-          id: 2,
-          name: 'Курс по WEB'
-        },
-        {
-          id: 1,
-          name: 'Курс по питону'
+      const courses = await Course.find({}, 'name').sort('name').lean()
+      res.json(courses.map((item) => {
+        return {
+          ...item,
+          id: item._id
         }
-      ])
+      }))
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
     }
@@ -195,7 +248,8 @@ router.get(
 router.post(
   '/courses',
   [
-    // auth
+    auth,
+    control,
     check(
       'name',
       'Поле названия должно быть заполнено и иметь длину максимум 100'
@@ -211,8 +265,15 @@ router.post(
           message: 'Некорректные данные при попытке создать курс'
         })
       }
+      const {name} = req.body
+      const candidate = await Course.findOne({ name })
+      if (candidate)
+        return res.status(400).json({ message: 'Такой курс уже существует' })
+      const course = new Course({ name })
+      await course.save()
       res.json({
-        message: 'Курс создан успешно'
+        message: 'Курс создан успешно',
+        id: course._id
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -223,45 +284,23 @@ router.post(
 router.get(
   '/courses/:courseId',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
+      const course = await Course.findById(req.params.courseId, 'name').lean()
+      if (!course)
+        return res.status(404).json({message: 'Курс не найден'})
+      const lessons = await Lesson.find({course: req.params.courseId}, 'name').sort('-date').lean()
       res.json({
-        courseName: 'Курс по питону',
-        lessons: [
-          {
-            id: 7,
-            name: 'Урок 7'
-          },
-          {
-            id: 6,
-            name: 'Урок 6'
-          },
-          {
-            id: 5,
-            name: 'Урок 5'
-          },
-          {
-            id: 4,
-            name: 'Урок 4'
-          },
-          {
-            id: 3,
-            name: 'Урок 3'
-          },
-          {
-            id: 2,
-            name: 'Урок 2'
-          },
-          {
-            id: 1,
-            name: 'Урок 1'
+        courseName: course.name,
+        lessons: lessons.map((item) => {
+          return {
+            ...item,
+            id: item._id
           }
-        ]
+        })
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -272,7 +311,8 @@ router.get(
 router.patch(
   '/courses/:courseId',
   [
-    // auth
+    auth,
+    control,
     check(
       'name',
       'Поле названия должно иметь длину максимум 100'
@@ -281,13 +321,20 @@ router.patch(
   async (req, res) => {
     try {
       const errors = validationResult(req)
-
       if (!errors.isEmpty()) {
         return res.status(400).json({
           errors: errors.array(),
           message: 'Некорректные данные при попытке обновить курс'
         })
       }
+      const {name} = req.body
+      const candidate = await Course.findOne({name})
+      let fields = {}
+      if (!!name && !candidate)
+        fields.name = name
+      const result = await Course.findByIdAndUpdate(req.params.courseId, fields)
+      if (!result)
+        return res.status(404).json({message: 'Курс не найден'})
       res.json({
         message: 'Курс успешно обновлён'
       })
@@ -300,10 +347,22 @@ router.patch(
 router.delete(
   '/courses/:courseId',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
+      const result = await Course.findByIdAndDelete(req.params.courseId)
+      if (!result)
+        return res.status(404).json({message: 'Курс не найден'})
+      await Lesson.deleteMany({course: req.params.courseId})
+      await Task.deleteMany({course: req.params.courseId})
+      await Material.deleteMany({course: req.params.courseId})
+      await Group.deleteMany({course: req.params.courseId})
+      await Student.deleteMany({course: req.params.courseId})
+      await Solution.deleteMany({course: req.params.courseId})
+      await SubSolution.deleteMany({course: req.params.courseId})
+      await Verdict.deleteMany({course: req.params.courseId})
       res.json({
         message: 'Курс успешно удалён'
       })
@@ -317,45 +376,18 @@ router.delete(
 router.get(
   '/courses/:courseId/lessons',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
-      res.json({
-        lessons: [
-          {
-            id: 7,
-            name: 'Урок 7'
-          },
-          {
-            id: 6,
-            name: 'Урок 6'
-          },
-          {
-            id: 5,
-            name: 'Урок 5'
-          },
-          {
-            id: 4,
-            name: 'Урок 4'
-          },
-          {
-            id: 3,
-            name: 'Урок 3'
-          },
-          {
-            id: 2,
-            name: 'Урок 2'
-          },
-          {
-            id: 1,
-            name: 'Урок 1'
-          }
-        ]
-      })
+      const lessons = await Lesson.find({course: req.params.courseId}, 'name').sort('-date').lean()
+      res.json(lessons.map((item) => {
+        return {
+          ...item,
+          id: item._id
+        }
+      }))
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
     }
@@ -365,7 +397,8 @@ router.get(
 router.post(
   '/courses/:courseId/lessons',
   [
-    // auth
+    auth,
+    control,
     check(
       'name',
       'Поле названия должно быть заполнено и иметь длину максимум 100'
@@ -378,15 +411,23 @@ router.post(
   async (req, res) => {
     try {
       const errors = validationResult(req)
-
       if (!errors.isEmpty()) {
         return res.status(400).json({
           errors: errors.array(),
           message: 'Некорректные данные при попытке создать урок'
         })
       }
+      const course = await Course.findById(req.params.courseId)
+      if (!course)
+        return res.status(404).json({
+          message: 'Курс не найден'
+        })
+      const {name, rating} = req.body
+      const lesson = new Lesson({ name, rating, date: Date.now(), course: req.params.courseId })
+      await lesson.save()
       res.json({
-        message: 'Урок создан успешно'
+        message: 'Урок создан успешно',
+        id: lesson._id
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -397,60 +438,31 @@ router.post(
 router.get(
   '/courses/:courseId/lessons/:lessonId',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
+      const lesson = await Lesson.findOne({_id: req.params.lessonId, course: req.params.courseId}).lean()
+      if (!lesson)
+        return res.status(404).json({message: 'Урок не найден'})
+      const tasks = await Task.find({course: req.params.courseId, lesson: req.params.lessonId}, 'name').sort('date').lean()
+      const materials = await Material.find({course: req.params.courseId, lesson: req.params.lessonId}, 'name').sort('date').lean()
       res.json({
-        lessonName: 'Урок 1',
-        rating: 2.00,
-        tasks: [
-          {
-            id: 1,
-            name: 'Задача 1'
-          },
-          {
-            id: 2,
-            name: 'Задача 2'
-          },
-          {
-            id: 3,
-            name: 'Задача 3'
-          },
-          {
-            id: 4,
-            name: 'Задача 4'
-          },
-          {
-            id: 5,
-            name: 'Задача 5'
-          },
-          {
-            id: 6,
-            name: 'Задача 6'
-          },
-          {
-            id: 7,
-            name: 'Задача 7'
+        lessonName: lesson.name,
+        rating: lesson.rating,
+        tasks: tasks.map((item) => {
+          return {
+            ...item,
+            id: item._id
           }
-        ],
-        materials: [
-          {
-            id: 1,
-            name: 'Материал 1'
-          },
-          {
-            id: 2,
-            name: 'Материал 2'
-          },
-          {
-            id: 3,
-            name: 'Материал 3'
+        }),
+        materials: materials.map((item) => {
+          return {
+            ...item,
+            id: item._id
           }
-        ]
+        })
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -461,7 +473,8 @@ router.get(
 router.patch(
   '/courses/:courseId/lessons/:lessonId',
   [
-    // auth
+    auth,
+    control,
     check(
       'name',
       'Поле названия должно иметь длину максимум 100'
@@ -474,13 +487,21 @@ router.patch(
   async (req, res) => {
     try {
       const errors = validationResult(req)
-
       if (!errors.isEmpty()) {
         return res.status(400).json({
           errors: errors.array(),
           message: 'Некорректные данные при попытке обновить урок'
         })
       }
+      const {name, rating} = req.body
+      let fields = {}
+      if (!!name)
+        fields.name = name
+      if (!!rating)
+        fields.rating = rating
+      const result = await Lesson.findOneAndUpdate({_id: req.params.lessonId, course: req.params.courseId}, fields)
+      if (!result)
+        return res.status(404).json({message: 'Урок не найден'})
       res.json({
         message: 'Урок успешно обновлён'
       })
@@ -493,10 +514,19 @@ router.patch(
 router.delete(
   '/courses/:courseId/lessons/:lessonId',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
+      const result = await Lesson.findOneAndDelete({_id: req.params.lessonId, course: req.params.courseId})
+      if (!result)
+        return res.status(404).json({message: 'Урок не найден'})
+      await Task.deleteMany({lesson: req.params.lessonId})
+      await Material.deleteMany({lesson: req.params.lessonId})
+      await Solution.deleteMany({lesson: req.params.lessonId})
+      await SubSolution.deleteMany({lesson: req.params.lessonId})
+      await Verdict.deleteMany({lesson: req.params.lessonId})
       res.json({
         message: 'Урок успешно удалён'
       })
@@ -509,43 +539,18 @@ router.delete(
 router.get(
   '/courses/:courseId/lessons/:lessonId/tasks',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
-      res.json([
-        {
-          id: 1,
-          name: 'Задача 1'
-        },
-        {
-          id: 2,
-          name: 'Задача 2'
-        },
-        {
-          id: 3,
-          name: 'Задача 3'
-        },
-        {
-          id: 4,
-          name: 'Задача 4'
-        },
-        {
-          id: 5,
-          name: 'Задача 5'
-        },
-        {
-          id: 6,
-          name: 'Задача 6'
-        },
-        {
-          id: 7,
-          name: 'Задача 7'
+      const tasks = await Task.find({course: req.params.courseId, lesson: req.params.lessonId}, 'name').sort('date').lean()
+      res.json(tasks.map((item) => {
+        return {
+          ...item,
+          id: item._id
         }
-      ])
+      }))
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
     }
@@ -555,7 +560,8 @@ router.get(
 router.post(
   '/courses/:courseId/lessons/:lessonId/tasks',
   [
-    // auth
+    auth,
+    control,
     check(
       'name',
       'Поле названия должно быть заполнено и иметь длину максимум 100'
@@ -568,15 +574,23 @@ router.post(
   async (req, res) => {
     try {
       const errors = validationResult(req)
-
       if (!errors.isEmpty()) {
         return res.status(400).json({
           errors: errors.array(),
           message: 'Некорректные данные при попытке создать задачу'
         })
       }
+      const lesson = await Lesson.findOne({_id: req.params.lessonId, course: req.params.courseId})
+      if (!lesson)
+        return res.status(404).json({
+          message: 'Урок не найден'
+        })
+      const {name, body} = req.body
+      const task = new Task({name, body, course: req.params.courseId, lesson: req.params.lessonId, date: Date.now()})
+      await task.save()
       res.json({
-        message: 'Задача создана успешно'
+        message: 'Задача создана успешно',
+        id: task._id
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -587,49 +601,19 @@ router.post(
 router.get(
   '/courses/:courseId/lessons/:lessonId/tasks/:taskId',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
+      const task = await Task.findOne({_id: req.params.taskId, course: req.params.courseId, lesson: req.params.lessonId}).lean()
+      if (!task)
+        return res.status(404).json({
+          message: 'Задача не найдена'
+        })
       res.json({
-        taskName: 'Задача 1',
-        body: '<div class="problem-statement">\n' +
-          '   <h2></h2>\n' +
-          '   <div class="legend"><span style="">\n' +
-          '         <p>Числа Трибоначчи — это последовательность целых чисел, которая определяется так: \n' +
-          '            </p><ul>\n' +
-          '               <li>первое, второе и третье числа Трибоначчи равны единице; </li>\n' +
-          '               <li>каждое следующее число Трибоначчи равно сумме трёх предыдущих. </li>\n' +
-          '            </ul>В общем, почти как числа Фибоначчи. \n' +
-          '         <p></p></span><p>Напишите программу, которая вычисляет числа Трибоначчи.</p>\n' +
-          '   </div>\n' +
-          '   <h2>Формат ввода</h2>\n' +
-          '   <div class="input-specification"><span style="">\n' +
-          '         <p>Вводится одно натуральное число <span class="tex-math-text">N</span> (N &lt;= 75).\n' +
-          '         </p></span></div>\n' +
-          '   <h2>Формат вывода</h2>\n' +
-          '   <div class="output-specification"><span style="">\n' +
-          '         <p>Выводятся первые <span class="tex-math-text">N</span> чисел Трибоначчи.\n' +
-          '         </p></span></div>\n' +
-          '   <h2>Пример</h2>\n' +
-          '   <table class="sample-tests">\n' +
-          '      <thead>\n' +
-          '         <tr>\n' +
-          '            <th>Ввод</th>\n' +
-          '            <th>Вывод</th>\n' +
-          '         </tr>\n' +
-          '      </thead>\n' +
-          '      <tbody>\n' +
-          '         <tr>\n' +
-          '            <td><pre>6</pre></td>\n' +
-          '            <td><pre>1 1 1 3 5 9</pre></td>\n' +
-          '         </tr>\n' +
-          '      </tbody>\n' +
-          '   </table>\n' +
-          '</div>'
+        taskName: task.name,
+        body: task.body
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -640,7 +624,8 @@ router.get(
 router.patch(
   '/courses/:courseId/lessons/:lessonId/tasks/:taskId',
   [
-    // auth
+    auth,
+    control,
     check(
       'name',
       'Поле названия должно иметь длину максимум 100'
@@ -650,13 +635,21 @@ router.patch(
   async (req, res) => {
     try {
       const errors = validationResult(req)
-
       if (!errors.isEmpty()) {
         return res.status(400).json({
           errors: errors.array(),
           message: 'Некорректные данные при попытке обновить задачу'
         })
       }
+      const {name, body} = req.body
+      let fields = {}
+      if (!!name)
+        fields.name = name
+      if (!!body)
+        fields.body = body
+      const result = await Task.findOneAndUpdate({_id: req.params.taskId, course: req.params.courseId, lesson: req.params.lessonId}, fields)
+      if (!result)
+        return res.status(404).json({message: 'Задача не найдена'})
       res.json({
         message: 'Задача успешно обновлена'
       })
@@ -669,10 +662,17 @@ router.patch(
 router.delete(
   '/courses/:courseId/lessons/:lessonId/tasks/:taskId',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
+      const result = await Task.findOneAndDelete({_id: req.params.taskId, course: req.params.courseId, lesson: req.params.lessonId})
+      if (!result)
+        return res.status(404).json({message: 'Задача не найдена'})
+      await Solution.deleteMany({task: req.params.taskId})
+      await SubSolution.deleteMany({task: req.params.taskId})
+      await Verdict.deleteMany({task: req.params.taskId})
       res.json({
         message: 'Задача успешно удалена'
       })
@@ -685,27 +685,18 @@ router.delete(
 router.get(
   '/courses/:courseId/lessons/:lessonId/materials',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
-      res.json([
-        {
-          id: 1,
-          name: 'Материал 1'
-        },
-        {
-          id: 2,
-          name: 'Материал 2'
-        },
-        {
-          id: 3,
-          name: 'Материал 3'
+      const materials = await Material.find({course: req.params.courseId, lesson: req.params.lessonId}, 'name').sort('date').lean()
+      res.json(materials.map((item) => {
+        return {
+          ...item,
+          id: item._id
         }
-      ])
+      }))
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
     }
@@ -715,7 +706,8 @@ router.get(
 router.post(
   '/courses/:courseId/lessons/:lessonId/materials',
   [
-    // auth
+    auth,
+    control,
     check(
       'name',
       'Поле названия должно быть заполнено и иметь длину максимум 100'
@@ -728,15 +720,23 @@ router.post(
   async (req, res) => {
     try {
       const errors = validationResult(req)
-
       if (!errors.isEmpty()) {
         return res.status(400).json({
           errors: errors.array(),
           message: 'Некорректные данные при попытке создать материал'
         })
       }
+      const lesson = await Lesson.findOne({_id: req.params.lessonId, course: req.params.courseId})
+      if (!lesson)
+        return res.status(404).json({
+          message: 'Урок не найден'
+        })
+      const {name, body} = req.body
+      const material = new Material({name, body, course: req.params.courseId, lesson: req.params.lessonId, date: Date.now()})
+      await material.save()
       res.json({
-        message: 'Материал создан успешно'
+        message: 'Материал создан успешно',
+        id: material._id
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -747,49 +747,19 @@ router.post(
 router.get(
   '/courses/:courseId/lessons/:lessonId/materials/:materialId',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
+      const material = await Material.findOne({_id: req.params.materialId, course: req.params.courseId, lesson: req.params.lessonId}).lean()
+      if (!material)
+        return res.status(404).json({
+          message: 'Задача не найдена'
+        })
       res.json({
-        materialName: 'Материал 1',
-        body: '<div class="problem-statement">\n' +
-          '   <h2></h2>\n' +
-          '   <div class="legend"><span style="">\n' +
-          '         <p>Числа Трибоначчи — это последовательность целых чисел, которая определяется так: \n' +
-          '            </p><ul>\n' +
-          '               <li>первое, второе и третье числа Трибоначчи равны единице; </li>\n' +
-          '               <li>каждое следующее число Трибоначчи равно сумме трёх предыдущих. </li>\n' +
-          '            </ul>В общем, почти как числа Фибоначчи. \n' +
-          '         <p></p></span><p>Напишите программу, которая вычисляет числа Трибоначчи.</p>\n' +
-          '   </div>\n' +
-          '   <h2>Формат ввода</h2>\n' +
-          '   <div class="input-specification"><span style="">\n' +
-          '         <p>Вводится одно натуральное число <span class="tex-math-text">N</span> (N &lt;= 75).\n' +
-          '         </p></span></div>\n' +
-          '   <h2>Формат вывода</h2>\n' +
-          '   <div class="output-specification"><span style="">\n' +
-          '         <p>Выводятся первые <span class="tex-math-text">N</span> чисел Трибоначчи.\n' +
-          '         </p></span></div>\n' +
-          '   <h2>Пример</h2>\n' +
-          '   <table class="sample-tests">\n' +
-          '      <thead>\n' +
-          '         <tr>\n' +
-          '            <th>Ввод</th>\n' +
-          '            <th>Вывод</th>\n' +
-          '         </tr>\n' +
-          '      </thead>\n' +
-          '      <tbody>\n' +
-          '         <tr>\n' +
-          '            <td><pre>6</pre></td>\n' +
-          '            <td><pre>1 1 1 3 5 9</pre></td>\n' +
-          '         </tr>\n' +
-          '      </tbody>\n' +
-          '   </table>\n' +
-          '</div>'
+        materialName: material.name,
+        body: material.body
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -800,7 +770,8 @@ router.get(
 router.patch(
   '/courses/:courseId/lessons/:lessonId/materials/:materialId',
   [
-    // auth
+    auth,
+    control,
     check(
       'name',
       'Поле названия должно иметь длину максимум 100'
@@ -810,13 +781,21 @@ router.patch(
   async (req, res) => {
     try {
       const errors = validationResult(req)
-
       if (!errors.isEmpty()) {
         return res.status(400).json({
           errors: errors.array(),
           message: 'Некорректные данные при попытке обновить материал'
         })
       }
+      const {name, body} = req.body
+      let fields = {}
+      if (!!name)
+        fields.name = name
+      if (!!body)
+        fields.body = body
+      const result = await Material.findOneAndUpdate({_id: req.params.materialId, course: req.params.courseId, lesson: req.params.lessonId}, fields)
+      if (!result)
+        return res.status(404).json({message: 'Материал не найден'})
       res.json({
         message: 'Материал успешно обновлён'
       })
@@ -829,10 +808,14 @@ router.patch(
 router.delete(
   '/courses/:courseId/lessons/:lessonId/materials/:materialId',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
+      const result = await Material.findOneAndDelete({_id: req.params.materialId, course: req.params.courseId, lesson: req.params.lessonId})
+      if (!result)
+        return res.status(404).json({message: 'Материал не найден'})
       res.json({
         message: 'Материал успешно удалён'
       })
@@ -845,20 +828,18 @@ router.delete(
 router.get(
   '/groups',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
-      res.json([
-        {
-          id: 1,
-          name: 'Курс по питону - УАвиаК-МЦК'
-        },
-        {
-          id: 2,
-          name: 'Курс по WEB - УАвиаК-МЦК'
+      const groups = await Group.find().lean()
+      res.json(groups.map((item) => {
+        return {
+          ...item,
+          id: item._id
         }
-      ])
+      }))
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
     }
@@ -868,23 +849,26 @@ router.get(
 router.post(
   '/groups',
   [
-    // auth,
+    auth,
+    control,
     check('name', 'Название группы должно быть указано и иметь длину максимум 100').exists().isLength({ max: 100 }),
-    check('courseId', 'Айди курса должно быть указано').exists().isNumeric()
+    check('courseId', 'Айди курса должно быть указано').exists()
   ],
   async (req, res) => {
     try {
       const errors = validationResult(req)
-
       if (!errors.isEmpty()) {
         return res.status(400).json({
           errors: errors.array(),
           message: 'Некорректные данные при попытке создать группу'
         })
       }
-
+      const {name, courseId} = req.body
+      const group = new Group({name, course: courseId})
+      await group.save()
       res.json({
-        message: 'Группа успешно создана'
+        message: 'Группа успешно создана',
+        id: group._id
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -895,48 +879,38 @@ router.post(
 router.get(
   '/groups/:groupId',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
+      const group = await Group.findById(req.params.groupId).populate('teacher').lean()
+      if (!group)
+        return res.status(404).json({
+          message: 'Группа не найдена'
+        })
+      const students = await Student.find({group: req.params.groupId}).populate('user').lean()
       res.json({
-        groupName: 'Курс по питону - УАвиаК-МЦК',
+        groupName: group.name,
         teacher: {
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
+          login: group.teacher ? group.teacher.login : '',
+          fullName: group.teacher ? group.teacher.fullName : ''
         },
-        students: [
-          {
-            id: 1,
-            login: 'user',
-            fullName: 'Аркадий Гурин Дмитриевич'
-          },
-          {
-            id: 2,
-            login: 'user',
-            fullName: 'Аркадий Гурин Дмитриевич'
-          },
-          {
-            id: 3,
-            login: 'user',
-            fullName: 'Аркадий Гурин Дмитриевич'
-          },
-          {
-            id: 4,
-            login: 'user',
-            fullName: 'Аркадий Гурин Дмитриевич'
-          },
-          {
-            id: 5,
-            login: 'user',
-            fullName: 'Аркадий Гурин Дмитриевич'
-          },
-          {
-            id: 6,
-            login: 'user',
-            fullName: 'Аркадий Гурин Дмитриевич'
+        students: students.map((item) => {
+          return {
+            id: item.user._id,
+            login: item.user.login,
+            fullName: item.user.fullName,
           }
-        ]
+        }).sort((a, b) => {
+          if (a.login > b.login) {
+            return 1;
+          }
+          if (a.login < b.login) {
+            return -1;
+          }
+          return 0;
+        })
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -947,20 +921,27 @@ router.get(
 router.patch(
   '/groups/:groupId',
   [
-    // auth,
+    auth,
+    control,
     check('name', 'Название группы должно длину максимум 100').exists().isLength({ max: 100 })
   ],
   async (req, res) => {
     try {
       const errors = validationResult(req)
-
       if (!errors.isEmpty()) {
         return res.status(400).json({
           errors: errors.array(),
           message: 'Некорректные данные при попытке обновить группу'
         })
       }
-
+      const {name} = req.body
+      let fields = {}
+      const candidate = await Group.findOne({name})
+      if (!!name && !candidate)
+        fields.name = name
+      const result = await Group.findByIdAndUpdate(req.params.groupId, fields)
+      if (!result)
+        return res.status(404).json({message: 'Группа не найдена'})
       res.json({
         message: 'Группа успешно обновлена'
       })
@@ -973,10 +954,15 @@ router.patch(
 router.delete(
   '/groups/:groupId',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
+      const result = await Group.findByIdAndDelete(req.params.groupId)
+      if (!result)
+        return res.status(404).json({message: 'Группа не найдена'})
+      await Student.deleteMany({group: req.params.groupId})
       res.json({
         message: 'Группа успешно удалена'
       })
@@ -989,20 +975,32 @@ router.delete(
 router.post(
   '/groups/:groupId/set_teacher',
   [
-    // auth,
-    check('userId', 'Айди юзера должно быть указано').exists().isNumeric()
+    auth,
+    control,
+    check('userId', 'Айди юзера должно быть указано').exists()
   ],
   async (req, res) => {
     try {
       const errors = validationResult(req)
-
       if (!errors.isEmpty()) {
         return res.status(400).json({
           errors: errors.array(),
           message: 'Некорректные данные при попытке установить преподавателя для группы'
         })
       }
-
+      const group = await Group.findById(req.params.groupId)
+      if (!group)
+        return res.status(404).json({
+          message: 'Группа не найдена'
+        })
+      const {userId} = req.body
+      const user = await User.findById(userId)
+      if (!user)
+        return res.status(404).json({
+          message: 'Пользователь не найден'
+        })
+      group.teacher = userId
+      await group.save()
       res.json({
         message: 'Учитель для группы успешно установлен'
       })
@@ -1015,42 +1013,27 @@ router.post(
 router.get(
   '/groups/:groupId/students',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
-      res.json([
-        {
-          id: 1,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
-        },
-        {
-          id: 2,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
-        },
-        {
-          id: 3,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
-        },
-        {
-          id: 4,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
-        },
-        {
-          id: 5,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
-        },
-        {
-          id: 6,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
+      const students = await Student.find({group: req.params.groupId}).populate('user').lean()
+      res.json(students.map((item) => {
+        return {
+          id: item.user._id,
+          login: item.user.login,
+          fullName: item.user.fullName,
         }
-      ])
+      }).sort((a, b) => {
+        if (a.login > b.login) {
+          return 1;
+        }
+        if (a.login < b.login) {
+          return -1;
+        }
+        return 0;
+      }))
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
     }
@@ -1060,20 +1043,32 @@ router.get(
 router.post(
   '/groups/:groupId/students',
   [
-    // auth,
-    check('userId', 'Айди юзера должно быть указано').exists().isNumeric()
+    auth,
+    control,
+    check('userId', 'Айди юзера должно быть указано').exists()
   ],
   async (req, res) => {
     try {
       const errors = validationResult(req)
-
       if (!errors.isEmpty()) {
         return res.status(400).json({
           errors: errors.array(),
           message: 'Некорректные данные при попытке добавить студента в группу'
         })
       }
-
+      const {userId} = req.body
+      const user = await User.findById(userId)
+      if (!user)
+        return res.status(404).json({
+          message: 'Пользователь не найден'
+        })
+      const group = await Group.findById(req.params.groupId).lean()
+      if (!group)
+        return res.status(404).json({
+          message: 'Группа не найдена'
+        })
+      const student = new Student({user: userId, group: req.params.groupId, course: group.course, rating: 0})
+      await student.save()
       res.json({
         message: 'Студент успешно добавлен в группу'
       })
@@ -1086,10 +1081,18 @@ router.post(
 router.delete(
   '/groups/:groupId/students/:userId',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
+      const result = await Student.findOneAndDelete({group: req.params.groupId, user: req.params.userId}).lean()
+      if (!result)
+        return res.status(404).json({
+          message: 'Студент или группа не найдена'
+        })
+      await Solution.deleteMany({group: result.group, user: result.user})
+      await SubSolution.deleteMany({group: result.group, user: result.user})
       res.json({
         message: 'Студент успешно удалён из группы'
       })
@@ -1102,42 +1105,22 @@ router.delete(
 router.get(
   '/groups/:groupId/users_exclude_students',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
-      res.json([
-        {
-          id: 1,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
-        },
-        {
-          id: 2,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
-        },
-        {
-          id: 3,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
-        },
-        {
-          id: 4,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
-        },
-        {
-          id: 5,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
-        },
-        {
-          id: 6,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
+      const students = await Student.find({group: req.params.groupId}).populate('user').lean()
+      const idsExclude = students.map((item) => {
+        return item.user._id
+      })
+      const users = await User.find({_id: {$nin: idsExclude}}, 'login fullName').lean()
+      res.json(users.map((item) => {
+        return {
+          ...item,
+          id: item._id
         }
-      ])
+      }))
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
     }
@@ -1147,42 +1130,20 @@ router.get(
 router.get(
   '/groups/:groupId/users_exclude_teacher',
   [
-    // auth
+    auth,
+    control,
   ],
   async (req, res) => {
     try {
-      res.json([
-        {
-          id: 1,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
-        },
-        {
-          id: 2,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
-        },
-        {
-          id: 3,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
-        },
-        {
-          id: 4,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
-        },
-        {
-          id: 5,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
-        },
-        {
-          id: 6,
-          login: 'user',
-          fullName: 'Аркадий Гурин Дмитриевич'
+      const group = await Group.findById(req.params.groupId).lean()
+      const idExclude = group.teacher
+      const users = await User.find({_id: {$ne: idExclude}}, 'login fullName').lean()
+      res.json(users.map((item) => {
+        return {
+          ...item,
+          id: item._id
         }
-      ])
+      }))
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
     }

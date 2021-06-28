@@ -12,7 +12,7 @@
       </div>
     </v-btn>
     <p class="text-h4 mt-6 pt-6">
-      {{ groupName }}
+      {{ lessonName }}
     </p>
     <v-divider></v-divider>
     <p class="text-h5 mt-6 mb-3">
@@ -48,11 +48,17 @@
 <script>
 export default {
   name: "index",
+  middleware: ['auth'],
   async fetch({ store, route, error }){
-    await store.dispatch('teacher/loadLessonProgress', { courseId: route.params.course_id, groupId: route.params.group_id, lessonId: route.params.lesson_id, error })
+    await store.dispatch('teacher/loadLessonProgress', { courseId: route.params.course_id, groupId: route.params.group_id, lessonId: route.params.lesson_id, error, store })
+  },
+  head() {
+    return {
+      title: this.lessonName,
+    }
   },
   computed: {
-    groupName() {
+    lessonName() {
       return this.$store.getters['teacher/lesson'].lessonName
     },
     students() {

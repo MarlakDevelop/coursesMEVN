@@ -1,99 +1,45 @@
 const {Router} = require('express')
 const config = require('config')
 const {check, validationResult} = require('express-validator')
+const User = require('../../models/User.model')
+const Student = require('../../models/Student.model')
+const Course = require('../../models/Course.model')
+const Lesson = require('../../models/Lesson.model')
+const Task = require('../../models/Task.model')
+const Material = require('../../models/Material.model')
+const Group = require('../../models/Group.model')
+const Solution = require('../../models/Solution.model')
+const SubSolution = require('../../models/SubSolution.model')
+const Verdict = require('../../models/Verdict.model')
 const auth = require('../../middleware/auth.middleware')
 const router = Router()
+const path = require('path')
+const fs = require('fs')
+const getFileMimeType = require('../../services/getFileMimeType')
 
 // /api/v1/teacher/courses/:courseId/groups/:groupId
 router.get(
   '/courses/:courseId/groups/:groupId',
   [
-    // auth
+    auth
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
+      const group = await Group.findOne({_id: req.params.groupId, course: req.params.courseId, teacher: req.user._id})
+      if (!group)
+        return res.status(404).json({
+          message: 'Группа не найдена'
+        })
+      const lessons = await Lesson.find({course: group.course}, 'name').sort('-date').lean()
       res.json({
-        groupName: 'Курс по питону - Уавиак-МЦК',
-        lessons: [
-          {
-            id: 15,
-            name: 'Урок 15',
-            isVisible: false
-          },
-          {
-            id: 14,
-            name: 'Урок 14',
-            isVisible: false
-          },
-          {
-            id: 13,
-            name: 'Урок 13',
-            isVisible: false
-          },
-          {
-            id: 12,
-            name: 'Урок 12',
-            isVisible: false
-          },
-          {
-            id: 11,
-            name: 'Урок 11',
-            isVisible: false
-          },
-          {
-            id: 10,
-            name: 'Урок 10',
-            isVisible: true
-          },
-          {
-            id: 9,
-            name: 'Урок 9',
-            isVisible: true
-          },
-          {
-            id: 8,
-            name: 'Урок 8',
-            isVisible: true
-          },
-          {
-            id: 7,
-            name: 'Урок 7',
-            isVisible: true
-          },
-          {
-            id: 6,
-            name: 'Урок 6',
-            isVisible: true
-          },
-          {
-            id: 5,
-            name: 'Урок 5',
-            isVisible: true
-          },
-          {
-            id: 4,
-            name: 'Урок 4',
-            isVisible: true
-          },
-          {
-            id: 3,
-            name: 'Урок 3',
-            isVisible: true
-          },
-          {
-            id: 2,
-            name: 'Урок 2',
-            isVisible: true
-          },
-          {
-            id: 1,
-            name: 'Урок 1',
-            isVisible: true
+        groupName: group.name,
+        lessons: lessons.map((item) => {
+          return {
+            id: item._id,
+            name: item.name,
+            isVisible: group.visibleLessons.includes(item._id)
           }
-        ]
+        })
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -104,47 +50,25 @@ router.get(
 router.get(
   '/courses/:courseId/groups/:groupId/rating',
   [
-    // auth
+    auth
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
+      const group = await Group.findOne({_id: req.params.groupId, course: req.params.courseId, teacher: req.user._id}).lean()
+      if (!group)
+        return res.status(404).json({
+          message: 'Группа не найдена'
+        })
+      const students = await Student.find({course: req.params.courseId, group: req.params.groupId}).populate('user').sort('-rating').lean()
       res.json({
-        groupName: 'Курс по питону - Уавиак-МЦК',
-        students: [
-          {
-            id: 6,
-            fullName: 'Гурин Аркадий',
-            rating: 42.32
-          },
-          {
-            id: 5,
-            fullName: 'Гурин Аркадий',
-            rating: 37.32
-          },
-          {
-            id: 1,
-            fullName: 'Гурин Аркадий',
-            rating: 32.32
-          },
-          {
-            id: 2,
-            fullName: 'Гурин Аркадий',
-            rating: 27.32
-          },
-          {
-            id: 3,
-            fullName: 'Гурин Аркадий',
-            rating: 22.32
-          },
-          {
-            id: 4,
-            fullName: 'Гурин Аркадий',
-            rating: 17.32
-          },
-        ]
+        groupName: group.name,
+        students: students.map((item) => {
+          return {
+            id: item.user._id,
+            fullName: item.user.fullName,
+            rating: item.rating
+          }
+        })
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -155,59 +79,27 @@ router.get(
 router.get(
   '/courses/:courseId/groups/:groupId/waiting_tasks',
   [
-    // auth
+    auth
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
+      const group = await Group.findOne({_id: req.params.groupId, course: req.params.courseId, teacher: req.user._id}).lean()
+      if (!group)
+        return res.status(404).json({
+          message: 'Группа не найдена'
+        })
+      const solutions = await Solution.find({group: req.params.groupId, course: req.params.courseId, status: 'waiting'}).populate('task').populate('user').sort('statusDate').lean()
       res.json({
-        groupName: 'Курс по питону - Уавиак-МЦК',
-        solutions: [
-          {
-            id: 6,
-            lessonId: 1,
-            taskId: 1,
-            taskName: 'Задача 6',
-            studentFullName: 'Гурин Аркадий'
-          },
-          {
-            id: 5,
-            lessonId: 1,
-            taskId: 1,
-            taskName: 'Задача 5',
-            studentFullName: 'Гурин Аркадий'
-          },
-          {
-            id: 4,
-            lessonId: 1,
-            taskId: 1,
-            taskName: 'Задача 4',
-            studentFullName: 'Гурин Аркадий'
-          },
-          {
-            id: 3,
-            lessonId: 1,
-            taskId: 1,
-            taskName: 'Задача 3',
-            studentFullName: 'Гурин Аркадий'
-          },
-          {
-            id: 2,
-            lessonId: 1,
-            taskId: 1,
-            taskName: 'Задача 2',
-            studentFullName: 'Гурин Аркадий'
-          },
-          {
-            id: 1,
-            lessonId: 1,
-            taskId: 1,
-            taskName: 'Задача 1',
-            studentFullName: 'Гурин Аркадий'
+        groupName: group.name,
+        solutions: solutions.map((item) => {
+          return {
+            id: item._id,
+            lessonId: item.lesson,
+            taskId: item.task._id,
+            taskName: item.task.name,
+            studentFullName: item.user.fullName
           }
-        ]
+        })
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -218,60 +110,37 @@ router.get(
 router.get(
   '/courses/:courseId/groups/:groupId/lessons/:lessonId',
   [
-    // auth
+    auth
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
+      const group = await Group.findOne({_id: req.params.groupId, course: req.params.courseId, teacher: req.user._id})
+      if (!group)
+        return res.status(404).json({
+          message: 'Группа не найдена'
+        })
+      const lesson = await Lesson.findOne({_id: req.params.lessonId, course: req.params.courseId}).lean()
+      if (!lesson)
+        return res.status(404).json({
+          message: 'Урок не найден'
+        })
+      const tasks = await Task.find({lesson: req.params.lessonId, course: req.params.courseId}, 'name').sort('date').lean()
+      const materials = await Material.find({lesson: req.params.lessonId, course: req.params.courseId}, 'name').sort('date').lean()
       res.json({
-        lessonName: 'Урок 1',
-        tasks: [
-          {
-            id: 1,
-            name: 'Задача 1'
-          },
-          {
-            id: 2,
-            name: 'Задача 2'
-          },
-          {
-            id: 3,
-            name: 'Задача 3'
-          },
-          {
-            id: 4,
-            name: 'Задача 4'
-          },
-          {
-            id: 5,
-            name: 'Задача 5'
-          },
-          {
-            id: 6,
-            name: 'Задача 6'
-          },
-          {
-            id: 7,
-            name: 'Задача 7'
+        lessonName: lesson.name,
+        tasks: tasks.map((item) => {
+          return {
+            id: item._id,
+            name: item.name
           }
-        ],
-        materials: [
-          {
-            id: 1,
-            name: 'Учебник 1'
-          },
-          {
-            id: 2,
-            name: 'Учебник 2'
-          },
-          {
-            id: 3,
-            name: 'Учебник 3'
+        }),
+        materials: materials.map((item) => {
+          return {
+            id: item._id,
+            name: item.name
           }
-        ],
-        isVisible: false
+        }),
+        isVisible: group.visibleLessons.includes(lesson._id)
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -282,22 +151,47 @@ router.get(
 router.patch(
   '/courses/:courseId/groups/:groupId/lessons/:lessonId/set_visibility',
   [
+    auth,
     check('visible', 'Поле visible должно быть булевым значением').exists().isBoolean()
-    // auth
   ],
   async (req, res) => {
     try {
       const errors = validationResult(req)
-
       if (!errors.isEmpty()) {
         return res.status(400).json({
           errors: errors.array(),
           message: 'Некорректные данные при попытке обновить урок'
         })
       }
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
+      const {visible} = req.body
+      const group = await Group.findOne({_id: req.params.groupId, course: req.params.courseId, teacher: req.user._id})
+      if (!group)
+        return res.status(404).json({
+          message: 'Группа не найдена'
+        })
+      const lesson = await Lesson.findOne({_id: req.params.lessonId, course: req.params.courseId})
+      if (!lesson)
+        return res.status(404).json({
+          message: 'Урок не найден'
+        })
+      if (visible) {
+        if (group.visibleLessons.includes(req.params.lessonId)) {
+          return res.status(400).json({
+            message: 'Урок уже видим'
+          })
+        } else {
+          await group.visibleLessons.push(req.params.lessonId)
+        }
+      } else {
+        if (!group.visibleLessons.includes(req.params.lessonId)) {
+          return res.status(400).json({
+            message: 'Урок уже невидим'
+          })
+        } else {
+          await group.visibleLessons.remove(req.params.lessonId)
+        }
+      }
+      await group.save()
       res.json({ message: 'Видимость урока обновлена' })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -308,48 +202,33 @@ router.patch(
 router.get(
   '/courses/:courseId/groups/:groupId/lessons/:lessonId/progress',
   [
-    // auth
+    auth
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
+      const group = await Group.findOne({_id: req.params.groupId, course: req.params.courseId, teacher: req.user._id}).lean()
+      if (!group)
+        return res.status(404).json({
+          message: 'Группа не найдена'
+        })
+      const lesson = await Lesson.findOne({_id: req.params.lessonId, course: req.params.courseId})
+      if (!lesson)
+        return res.status(404).json({
+          message: 'Урок не найден'
+        })
+      const students = await Student.find({group: req.params.groupId, course: req.params.courseId}).populate('user').lean()
+      const tasks = await Task.find({lesson: req.params.lessonId, course: req.params.courseId}, 'user').lean()
+      const solutions = await Solution.find({lesson: req.params.lessonId, course: req.params.courseId, group: req.params.groupId, status: 'accepted'}, 'user').lean()
       res.json({
-        lessonName: 'Курс по питону - Уавиак-МЦК',
-        students: [
-          {
-            id: 6,
-            fullName: 'Аркадий Гурин',
-            tasksAccepted: 7
-          },
-          {
-            id: 5,
-            fullName: 'Аркадий Гурин',
-            tasksAccepted: 6
-          },
-          {
-            id: 1,
-            fullName: 'Аркадий Гурин',
-            tasksAccepted: 4
-          },
-          {
-            id: 2,
-            fullName: 'Аркадий Гурин',
-            tasksAccepted: 3
-          },
-          {
-            id: 3,
-            fullName: 'Аркадий Гурин',
-            tasksAccepted: 1
-          },
-          {
-            id: 4,
-            fullName: 'Аркадий Гурин',
-            tasksAccepted: 0
+        lessonName: lesson.name,
+        students: students.map((item) => {
+          return {
+            id: item.user._id,
+            fullName: item.user.fullName,
+            tasksAccepted: solutions.filter((item_) => String(item.user._id) === String(item_.user)).length
           }
-        ],
-        tasksTotal: 7
+        }).sort((a, b) => b.tasksAccepted - a.tasksAccepted),
+        tasksTotal: tasks.length
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -360,68 +239,32 @@ router.get(
 router.get(
   '/courses/:courseId/groups/:groupId/lessons/:lessonId/tasks/:taskId',
   [
-    // auth
+    auth
   ],
   async (req, res) => {
     try {
+      const group = await Group.findOne({_id: req.params.groupId, course: req.params.courseId, teacher: req.user._id}).lean()
+      if (!group)
+        return res.status(404).json({
+          message: 'Группа не найдена'
+        })
+      const task = await Task.findOne({_id: req.params.taskId, lesson: req.params.lessonId, course: req.params.courseId}).lean()
+      if(!task) {
+        return res.status(404).json({
+          message: 'Задача не найдена'
+        })
+      }
+      const studentsSolutions = await Solution.find({task: req.params.taskId, group: req.params.groupId, lesson: req.params.lessonId, course: req.params.courseId}).populate('user').sort('user.fullName')
       res.json({
-        taskName: 'Задача 1',
-        body: '<div class="problem-statement">\n' +
-          '   <h2></h2>\n' +
-          '   <div class="legend"><span style="">\n' +
-          '         <p>Числа Трибоначчи — это последовательность целых чисел, которая определяется так: \n' +
-          '            </p><ul>\n' +
-          '               <li>первое, второе и третье числа Трибоначчи равны единице; </li>\n' +
-          '               <li>каждое следующее число Трибоначчи равно сумме трёх предыдущих. </li>\n' +
-          '            </ul>В общем, почти как числа Фибоначчи. \n' +
-          '         <p></p></span><p>Напишите программу, которая вычисляет числа Трибоначчи.</p>\n' +
-          '   </div>\n' +
-          '   <h2>Формат ввода</h2>\n' +
-          '   <div class="input-specification"><span style="">\n' +
-          '         <p>Вводится одно натуральное число <span class="tex-math-text">N</span> (N &lt;= 75).\n' +
-          '         </p></span></div>\n' +
-          '   <h2>Формат вывода</h2>\n' +
-          '   <div class="output-specification"><span style="">\n' +
-          '         <p>Выводятся первые <span class="tex-math-text">N</span> чисел Трибоначчи.\n' +
-          '         </p></span></div>\n' +
-          '   <h2>Пример</h2>\n' +
-          '   <table class="sample-tests">\n' +
-          '      <thead>\n' +
-          '         <tr>\n' +
-          '            <th>Ввод</th>\n' +
-          '            <th>Вывод</th>\n' +
-          '         </tr>\n' +
-          '      </thead>\n' +
-          '      <tbody>\n' +
-          '         <tr>\n' +
-          '            <td><pre>6</pre></td>\n' +
-          '            <td><pre>1 1 1 3 5 9</pre></td>\n' +
-          '         </tr>\n' +
-          '      </tbody>\n' +
-          '   </table>\n' +
-          '</div>',
-        studentsSolutions: [
-          {
-            id: 1,
-            studentFullName: 'Аркадий Гурин',
-            status: 'waiting'
-          },
-          {
-            id: 2,
-            studentFullName: 'Аркадий Гурин',
-            status: 'waiting'
-          },
-          {
-            id: 3,
-            studentFullName: 'Аркадий Гурин',
-            status: 'accepted'
-          },
-          {
-            id: 4,
-            studentFullName: 'Аркадий Гурин',
-            status: 'rejected'
-          },
-        ]
+        taskName: task.name,
+        body: task.body,
+        studentsSolutions: studentsSolutions.map((item) => {
+          return {
+            id: item._id,
+            studentFullName: item.user.fullName,
+            status: item.status
+          }
+        })
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -432,46 +275,24 @@ router.get(
 router.get(
   '/courses/:courseId/groups/:groupId/lessons/:lessonId/materials/:materialId',
   [
-    // auth
+    auth
   ],
   async (req, res) => {
     try {
+      const group = await Group.findOne({_id: req.params.groupId, course: req.params.courseId, teacher: req.user._id}).lean()
+      if (!group)
+        return res.status(404).json({
+          message: 'Группа не найдена'
+        })
+      const material = await Material.findOne({_id: req.params.materialId, lesson: req.params.lessonId, course: req.params.courseId}).lean()
+      if(!material) {
+        return res.status(404).json({
+          message: 'Материал не найден'
+        })
+      }
       res.json({
-        materialName: 'Задача 1',
-        body: '<div class="problem-statement">\n' +
-          '   <h2></h2>\n' +
-          '   <div class="legend"><span style="">\n' +
-          '         <p>Числа Трибоначчи — это последовательность целых чисел, которая определяется так: \n' +
-          '            </p><ul>\n' +
-          '               <li>первое, второе и третье числа Трибоначчи равны единице; </li>\n' +
-          '               <li>каждое следующее число Трибоначчи равно сумме трёх предыдущих. </li>\n' +
-          '            </ul>В общем, почти как числа Фибоначчи. \n' +
-          '         <p></p></span><p>Напишите программу, которая вычисляет числа Трибоначчи.</p>\n' +
-          '   </div>\n' +
-          '   <h2>Формат ввода</h2>\n' +
-          '   <div class="input-specification"><span style="">\n' +
-          '         <p>Вводится одно натуральное число <span class="tex-math-text">N</span> (N &lt;= 75).\n' +
-          '         </p></span></div>\n' +
-          '   <h2>Формат вывода</h2>\n' +
-          '   <div class="output-specification"><span style="">\n' +
-          '         <p>Выводятся первые <span class="tex-math-text">N</span> чисел Трибоначчи.\n' +
-          '         </p></span></div>\n' +
-          '   <h2>Пример</h2>\n' +
-          '   <table class="sample-tests">\n' +
-          '      <thead>\n' +
-          '         <tr>\n' +
-          '            <th>Ввод</th>\n' +
-          '            <th>Вывод</th>\n' +
-          '         </tr>\n' +
-          '      </thead>\n' +
-          '      <tbody>\n' +
-          '         <tr>\n' +
-          '            <td><pre>6</pre></td>\n' +
-          '            <td><pre>1 1 1 3 5 9</pre></td>\n' +
-          '         </tr>\n' +
-          '      </tbody>\n' +
-          '   </table>\n' +
-          '</div>'
+        materialName: material.name,
+        body: material.body
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -482,65 +303,34 @@ router.get(
 router.get(
   '/courses/:courseId/groups/:groupId/lessons/:lessonId/tasks/:taskId/solutions/:solutionId',
   [
-    // auth
+    auth
   ],
   async (req, res) => {
     try {
+      const group = await Group.findOne({_id: req.params.groupId, course: req.params.courseId, teacher: req.user._id}).lean()
+      if (!group)
+        return res.status(404).json({
+          message: 'Группа не найдена'
+        })
+      const solution = await Solution.findOne({_id: req.params.solutionId, lesson: req.params.lessonId, course: req.params.courseId, group: req.params.groupId, task: req.params.taskId})
+      if (!solution) {
+        return res.status(404).json({
+          message: 'Решение не найдено'
+        })
+      }
+      const subSolution = await SubSolution.findOne({solution: req.params.solutionId}).sort('-date')
+      const mimeType = await getFileMimeType(path.extname(subSolution.file))
+      const body = await fs.readFileSync('.' + subSolution.file, 'utf8');
       res.json({
-        status: 'accepted',
-        statusDate: Date.now(),
+        status: solution.status,
+        statusDate: solution.statusDate,
         lastSubSolution: {
-          id: 421322,
-          date: Date.now(),
+          id: subSolution._id,
+          date: subSolution.date,
           file: {
-            path: 'https://yastatic.net/s3/lyceum/content/images/first-year/lesson-2/fy-2-1.png',
-            mimeType: 'text/x-python',
-            body: 'from discord.ext import commands\n' +
-              'import pymorphy2\n' +
-              '\n' +
-              '\n' +
-              'morph = pymorphy2.MorphAnalyzer()\n' +
-              '\n' +
-              '\n' +
-              'class RandomThings(commands.Cog):\n' +
-              '    def __init__(self, bot):\n' +
-              '        self.bot = bot\n' +
-              '\n' +
-              '    @commands.command(name=\'help_bot\')\n' +
-              '    async def help_bot(self, ctx):\n' +
-              '        await ctx.send(\'Commands:\\n"#!numerals" for agreement with numerals\\n"#!alive" for define alive or not alive\\n"#!noun" for noun case (nomn, gent, datv, accs, ablt, loct) and number state (sing, plur)\\n"#!inf" for infinitive state\\n"#!morph" for full morphological analysis\')\n' +
-              '\n' +
-              '    @commands.command(name=\'numerals\')\n' +
-              '    async def numerals(self, ctx, string, number):\n' +
-              '        res = morph.parse(string)[0]\n' +
-              '        word = res.make_agree_with_number(int(number)).word\n' +
-              '        await ctx.send(f\'{number} {word}\')\n' +
-              '\n' +
-              '    @commands.command(name=\'alive\')\n' +
-              '    async def alive(self, ctx, string):\n' +
-              '        res = morph.parse(string)[0]\n' +
-              '        await ctx.send(f\'{res.word} {"живой" if res.tag.animacy == "anim" else "не живой"}\')\n' +
-              '\n' +
-              '    @commands.command(name=\'noun\')\n' +
-              '    async def noun(self, ctx, string, case, num):\n' +
-              '        res = morph.parse(string)[0]\n' +
-              '        result = res.inflect({case, num})\n' +
-              '        await ctx.send(result.word)\n' +
-              '\n' +
-              '    @commands.command(name=\'inf\')\n' +
-              '    async def inf(self, ctx, string):\n' +
-              '        res = morph.parse(string)[0].normal_form\n' +
-              '        await ctx.send(res)\n' +
-              '\n' +
-              '    @commands.command(name=\'morph\')\n' +
-              '    async def morph(self, ctx, string):\n' +
-              '        res = morph.parse(string)[0]\n' +
-              '        await ctx.send(res)\n' +
-              '\n' +
-              '\n' +
-              'bot = commands.Bot(command_prefix=\'#!\')\n' +
-              'bot.add_cog(RandomThings(bot))\n' +
-              'bot.run(TOKEN)'
+            path: config.get('baseUrl') + subSolution.file,
+            mimeType: mimeType ? mimeType : null,
+            body: mimeType ? body : null
           }
         }
       })
@@ -553,52 +343,43 @@ router.get(
 router.get(
   '/courses/:courseId/groups/:groupId/lessons/:lessonId/tasks/:taskId/solutions/:solutionId/history',
   [
-    // auth
+    auth
   ],
   async (req, res) => {
     try {
+      const group = await Group.findOne({_id: req.params.groupId, course: req.params.courseId, teacher: req.user._id}).lean()
+      if (!group)
+        return res.status(404).json({
+          message: 'Группа не найдена'
+        })
+      const verdicts = await Verdict.find({lesson: req.params.lessonId, course: req.params.courseId, group: req.params.groupId, task: req.params.taskId, solution: req.params.solutionId}).sort('-date')
+      const subSolutions = await SubSolution.find({lesson: req.params.lessonId, course: req.params.courseId, group: req.params.groupId, task: req.params.taskId, solution: req.params.solutionId}).sort('-date')
       res.json( {
         answers: [
-          {
-            id: 421322,
-            name: 'Доработать',
-            date: Date.now(),
-            type: 'verdict',
-          },
-          {
-            id: 421322,
-            date: Date.now(),
-            type: 'solution'
-          },
-          {
-            id: 421322,
-            date: Date.now(),
-            type: 'solution'
-          },
-          {
-            id: 421322,
-            date: Date.now(),
-            type: 'solution'
-          },
-          {
-            id: 421322,
-            name: 'Доработать',
-            date: Date.now(),
-            type: 'verdict',
-          },
-          {
-            id: 421322,
-            name: 'Доработать',
-            date: Date.now(),
-            type: 'verdict',
-          },
-          {
-            id: 421322,
-            name: 'Доработать',
-            date: Date.now(),
-            type: 'verdict',
+          ...verdicts.map((item) => {
+            return {
+              id: item._id,
+              name: item.name,
+              date: item.date,
+              type: 'verdict',
+            }
+          }),
+          ...subSolutions.map((item) => {
+            return {
+              id: item._id,
+              date: item.date,
+              type: 'solution'
+            }
+          })
+        ].sort(function (a, b) {
+          if (a.date < b.date) {
+            return 1;
           }
-        ]
+          if (a.date > b.date) {
+            return -1;
+          }
+          return 0;
+        })
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -609,14 +390,23 @@ router.get(
 router.get(
   '/courses/:courseId/groups/:groupId/lessons/:lessonId/tasks/:taskId/solutions/:solutionId/verdicts/:verdictId',
   [
-    // auth
+    auth
   ],
   async (req, res) => {
     try {
+      const group = await Group.findOne({_id: req.params.groupId, course: req.params.courseId, teacher: req.user._id}).lean()
+      if (!group)
+        return res.status(404).json({
+          message: 'Группа не найдена'
+        })
+      const verdict = await Verdict.findOne({_id: req.params.verdictId, lesson: req.params.lessonId, course: req.params.courseId, group: req.params.groupId, task: req.params.taskId, solution: req.params.solutionId})
+      if (!verdict)
+        return res.status(404).json({
+          message: 'Вердикт не найден'
+        })
       res.json({
-        name: 'Доработать',
-        comment: 'Доработать loremsa dfas f;as kf ka;sl;k fl;kdjl;as fj;kasdk;j gjkdsa lg saj;tg j;ldsajl fbj ajs.d p fdsa,jf;dsiv-isar.k;v;xjrlweqrgufds;a.mg;aisdl.hsdalg m;a helo worle привет я аркадий сегодня мне исполняется 16 лет но я нке уверен в себе и своих силах',
-        status: 'rejected'
+        name: verdict.name,
+        comment: verdict.comment
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -627,61 +417,29 @@ router.get(
 router.get(
   '/courses/:courseId/groups/:groupId/lessons/:lessonId/tasks/:taskId/solutions/:solutionId/solutions/:subSolutionId',
   [
-    // auth
+    auth
   ],
   async (req, res) => {
     try {
+      const group = await Group.findOne({_id: req.params.groupId, course: req.params.courseId, teacher: req.user._id}).lean()
+      if (!group)
+        return res.status(404).json({
+          message: 'Группа не найдена'
+        })
+      const subSolution = await SubSolution.findOne({_id: req.params.subSolutionId, lesson: req.params.lessonId, course: req.params.courseId, group: req.params.groupId, task: req.params.taskId, solution: req.params.solutionId}).sort('-date')
+      if(!subSolution) {
+        return res.status(404).json({
+          message: 'Решение не найдено'
+        })
+      }
+      const mimeType = await getFileMimeType(path.extname(subSolution.file))
+      const body = await fs.readFileSync('.' + subSolution.file, 'utf8');
       res.json({
-        date: Date.now(),
+        date: subSolution.date,
         file: {
-          path: 'https://yastatic.net/s3/lyceum/content/images/first-year/lesson-2/fy-2-1.png',
-          mimeType: 'text/x-python',
-          body: 'from discord.ext import commands\n' +
-            'import pymorphy2\n' +
-            '\n' +
-            '\n' +
-            'morph = pymorphy2.MorphAnalyzer()\n' +
-            '\n' +
-            '\n' +
-            'class RandomThings(commands.Cog):\n' +
-            '    def __init__(self, bot):\n' +
-            '        self.bot = bot\n' +
-            '\n' +
-            '    @commands.command(name=\'help_bot\')\n' +
-            '    async def help_bot(self, ctx):\n' +
-            '        await ctx.send(\'Commands:\\n"#!numerals" for agreement with numerals\\n"#!alive" for define alive or not alive\\n"#!noun" for noun case (nomn, gent, datv, accs, ablt, loct) and number state (sing, plur)\\n"#!inf" for infinitive state\\n"#!morph" for full morphological analysis\')\n' +
-            '\n' +
-            '    @commands.command(name=\'numerals\')\n' +
-            '    async def numerals(self, ctx, string, number):\n' +
-            '        res = morph.parse(string)[0]\n' +
-            '        word = res.make_agree_with_number(int(number)).word\n' +
-            '        await ctx.send(f\'{number} {word}\')\n' +
-            '\n' +
-            '    @commands.command(name=\'alive\')\n' +
-            '    async def alive(self, ctx, string):\n' +
-            '        res = morph.parse(string)[0]\n' +
-            '        await ctx.send(f\'{res.word} {"живой" if res.tag.animacy == "anim" else "не живой"}\')\n' +
-            '\n' +
-            '    @commands.command(name=\'noun\')\n' +
-            '    async def noun(self, ctx, string, case, num):\n' +
-            '        res = morph.parse(string)[0]\n' +
-            '        result = res.inflect({case, num})\n' +
-            '        await ctx.send(result.word)\n' +
-            '\n' +
-            '    @commands.command(name=\'inf\')\n' +
-            '    async def inf(self, ctx, string):\n' +
-            '        res = morph.parse(string)[0].normal_form\n' +
-            '        await ctx.send(res)\n' +
-            '\n' +
-            '    @commands.command(name=\'morph\')\n' +
-            '    async def morph(self, ctx, string):\n' +
-            '        res = morph.parse(string)[0]\n' +
-            '        await ctx.send(res)\n' +
-            '\n' +
-            '\n' +
-            'bot = commands.Bot(command_prefix=\'#!\')\n' +
-            'bot.add_cog(RandomThings(bot))\n' +
-            'bot.run(TOKEN)'
+          path: config.get('baseUrl') + subSolution.file,
+          mimeType: mimeType ? mimeType : null,
+          body: mimeType ? body : null
         }
       })
     } catch (e) {
@@ -693,22 +451,64 @@ router.get(
 router.post(
   '/courses/:courseId/groups/:groupId/lessons/:lessonId/tasks/:taskId/solutions/:solutionId/send_verdict',
   [
+    auth,
     check('name', 'Название для вердикта должно быть заполнено').exists().isLength({max: 100}),
     check('comment', 'Комментарий для вердикта должен быть заполнен и иметь длину максимум 1000').exists().isLength({max: 1000}),
-    check('status', 'Статус вердикта должен равняться либо accepted, либо rejected').exists().isIn(['accepted', 'rejected']),
-    // auth,
+    check('status', 'Статус вердикта должен равняться либо accepted, либо rejected').exists().isIn(['accepted', 'rejected'])
   ],
   async (req, res, next) => {
     try {
+      function decimalAdjust(type, value, exp) {
+        // Если степень не определена, либо равна нулю...
+        if (typeof exp === 'undefined' || +exp === 0) {
+          return Math[type](value);
+        }
+        value = +value;
+        exp = +exp;
+        // Если значение не является числом, либо степень не является целым числом...
+        if (isNaN(value) || !(typeof exp === 'number' && exp % 1 === 0)) {
+          return NaN;
+        }
+        // Сдвиг разрядов
+        value = value.toString().split('e');
+        value = Math[type](+(value[0] + 'e' + (value[1] ? (+value[1] - exp) : -exp)));
+        // Обратный сдвиг
+        value = value.toString().split('e');
+        return +(value[0] + 'e' + (value[1] ? (+value[1] + exp) : exp));
+      }
       const errors = validationResult(req)
-
       if (!errors.isEmpty()) {
         return res.status(400).json({
           errors: errors.array(),
           message: 'Некорректные данные при попытке отправить вердикт'
         })
       }
-
+      const {name, comment, status} = req.body
+      const group = await Group.findOne({_id: req.params.groupId, course: req.params.courseId, teacher: req.user._id}).lean()
+      if (!group)
+        return res.status(404).json({
+          message: 'Группа не найдена'
+        })
+      const solution = await Solution.findOne({_id: req.params.solutionId, task: req.params.taskId, lesson: req.params.lessonId, group: req.params.groupId, course: req.params.courseId})
+      if (!solution)
+        return res.status(404).json({
+          message: 'Решение не найдено'
+        })
+      const student = await Student.findOne({group: solution.group, user: solution.user})
+      const lesson = await Lesson.findOne({_id: req.params.lessonId, course: req.params.courseId}, 'rating')
+      const tasks = await Task.find({lesson: req.params.lessonId, course: req.params.courseId}, '_id')
+      const ratingChange = decimalAdjust('round', Number(lesson.rating) / Number(tasks.length), -2)
+      if (['waiting', 'rejected'].includes(String(solution.status)) && status === 'accepted' && !!tasks) {
+        student.rating += ratingChange
+      } else if (String(solution.status) === 'accepted' && status === 'rejected' && !!tasks) {
+        student.rating -= ratingChange
+      }
+      solution.status = status
+      solution.statusDate = Date.now()
+      const verdict = new Verdict({name, comment, date: Date.now(), group: req.params.groupId, course: req.params.courseId, lesson: req.params.lessonId, task: req.params.taskId, solution: req.params.solutionId})
+      await solution.save()
+      await student.save()
+      await verdict.save()
       res.json({
         message: 'Вердикт отправлен'
       })

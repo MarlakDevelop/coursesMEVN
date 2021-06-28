@@ -2,45 +2,41 @@ const {Router} = require('express')
 const config = require('config')
 const {check, validationResult} = require('express-validator')
 const auth = require('../../middleware/auth.middleware')
+const User = require('../../models/User.model')
+const Student = require('../../models/Student.model')
+const Course = require('../../models/Course.model')
+const Lesson = require('../../models/Lesson.model')
+const Task = require('../../models/Task.model')
+const Material = require('../../models/Material.model')
+const Group = require('../../models/Group.model')
 const router = Router()
 
 // /api/v1/main
 router.get(
   '/',
   [
-    // auth
+    auth
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
+      const courses = await Student.find({user: req.user.id}).populate('course').sort('course.name').lean()
+      const groups = await Group.find({teacher: req.user.id}).populate('course').sort('name').lean()
       res.json({
-        studyingCourses: [
-          {
-            groupId: 1,
-            id: 1,
-            name: 'Курс по питону'
-          },
-          {
-            groupId: 2,
-            id: 2,
-            name: 'Курс по WEB'
-          },
-        ],
-        teachingGroups: [
-          {
-            id: 1,
-            courseId: 1,
-            name: 'Курс по питону - Уавиак-МЦК'
-          },
-          {
-            id: 2,
-            courseId: 2,
-            name: 'Курс по WEB - Уавиак-МЦК'
-          },
-        ],
-        isController: true
+        studyingCourses: courses.map((item) => {
+          return {
+            groupId: item.group,
+            id: item.course._id,
+            name: item.course.name
+          }
+        }),
+        teachingGroups: groups.map((item) => {
+          return {
+            id: item._id,
+            courseId: item.course._id,
+            name: item.name
+          }
+        }),
+        isController: req.user.isController
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
@@ -51,27 +47,20 @@ router.get(
 router.get(
   '/profile',
   [
-    // auth
+    auth
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
+      const courses = await Student.find({user: req.user.id}).populate('course').sort('course.name').lean()
       res.json({
-        fullName: 'Аркадий Гурин Дмитриевич',
-        courses: [
-          {
-            id: 1,
-            name: 'Курс по питону - Уавиак МЦК',
-            rating: 42.32
-          },
-          {
-            id: 2,
-            name: 'Курс по веб - Уавиак МЦК',
-            rating: 32.32
+        fullName: req.user.fullName,
+        courses: courses.map((item) => {
+          return {
+            id: item.course._id,
+            name: item.course.name,
+            rating: item.rating
           }
-        ]
+        })
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })

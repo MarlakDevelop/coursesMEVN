@@ -19,38 +19,27 @@ router.post(
   async (req, res) => {
     try {
       const errors = validationResult(req)
-
       if (!errors.isEmpty()) {
         return res.status(400).json({
           errors: errors.array(),
           message: 'Некорректный данные при входе в систему'
         })
       }
-
       const {login, password} = req.body
-
-      return res.json({ token: 'assda', userId: 1 })
-
       const user = await User.findOne({ login })
-
       if (!user) {
         return res.status(400).json({ message: 'Пользователь не найден' })
       }
-
       const isMatch = await bcrypt.compare(password, user.password)
-
       if (!isMatch) {
         return res.status(400).json({ message: 'Неверный пароль, попробуйте снова' })
       }
-
       const token = jwt.sign(
-        { userId: user.id },
+        { userId: user._id },
         config.get('secret'),
         { expiresIn: '14d' }
       )
-
-      res.json({ token, userId: user.id })
-
+      res.json({ token, userId: user._id })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })
     }
@@ -64,17 +53,6 @@ router.get(
   ],
   async (req, res) => {
     res.status(200).json({ message: 'Вы авторизованы' })
-  })
-
-
-// /api/v1/auth/check_auth
-router.get(
-  '/check_auth',
-  [
-    auth
-  ],
-  async (req, res) => {
-    res.status(200)
   })
 
 // /api/v1/auth/check_control
@@ -92,15 +70,12 @@ router.get(
 router.get(
   '/me',
   [
-    // auth
+    auth
   ],
   async (req, res) => {
     try {
-      // courses = await Course.find({'_id': [req.current_user.students.student_courses.course.select('id')]})
-      // groups = req.current_user.groups
-      // is_controller = req.current_user.is_controller
       res.json({
-        fullName: 'Гурин Аркадий'
+        fullName: req.user.fullName
       })
     } catch (e) {
       res.status(500).json({ message: 'Что-то пошло не так, попробуйте снова' })

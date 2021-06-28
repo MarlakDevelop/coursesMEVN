@@ -59,8 +59,14 @@
 <script>
 export default {
   name: "waiting_tasks",
+  middleware: ['auth'],
   async fetch({ store, route, error }){
-    await store.dispatch('teacher/loadGroupWaitingTasks', { courseId: route.params.course_id, groupId: route.params.group_id, error })
+    await store.dispatch('teacher/loadGroupWaitingTasks', { courseId: route.params.course_id, groupId: route.params.group_id, error, store })
+  },
+  head() {
+    return {
+      title: this.groupName,
+    }
   },
   computed: {
     groupName() {

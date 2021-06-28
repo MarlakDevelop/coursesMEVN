@@ -123,13 +123,19 @@
 <script>
 export default {
   name: "index",
+  middleware: ['auth'],
   async fetch({ store, route, error }){
     await store.dispatch('student/loadLesson', {
       courseId: route.params.course_id,
       groupId: route.params.group_id,
       lessonId: route.params.lesson_id,
-      error
+      error, store
     })
+  },
+  head() {
+    return {
+      title: this.title,
+    }
   },
   computed: {
     title() {

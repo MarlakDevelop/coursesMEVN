@@ -66,6 +66,7 @@
 <script>
 export default {
   name: "create",
+  middleware: ['auth'],
   data() {
     return {
       dialog: {
@@ -83,12 +84,22 @@ export default {
       },
     }
   },
+  head() {
+    return {
+      title: 'Создание курса',
+    }
+  },
   methods: {
     async createCourse() {
       await this.$axios.post(
         `control/courses`,
         {
           name: this.form.title
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
         }
       ).then(() => {
         this.dialog.title = 'Успех'

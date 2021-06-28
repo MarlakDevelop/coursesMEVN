@@ -73,8 +73,14 @@
 
 export default {
   name: "_task_id",
+  middleware: ['auth'],
   async fetch({ store, route, error }){
-    await store.dispatch('teacher/loadTask', { courseId: route.params.course_id, groupId: route.params.group_id, lessonId: route.params.lesson_id, taskId: route.params.task_id, error })
+    await store.dispatch('teacher/loadTask', { courseId: route.params.course_id, groupId: route.params.group_id, lessonId: route.params.lesson_id, taskId: route.params.task_id, error, store })
+  },
+  head() {
+    return {
+      title: this.title,
+    }
   },
   computed: {
     title() {

@@ -110,8 +110,9 @@
 <script>
 export default {
   name: "index",
+  middleware: ['auth'],
   async fetch({ store, route, error }){
-    await store.dispatch('control/loadCourse', { courseId: route.params.course_id, error })
+    await store.dispatch('control/loadCourse', { courseId: route.params.course_id, error, store })
   },
   data() {
     return {
@@ -123,6 +124,7 @@ export default {
       form: {
         valid: false,
         title: '',
+        titleNeedUpdate: true,
         titleRules: [
           v => !!v || 'Название необходимо',
           v => v.length <= 100 || 'Название должно быть короче 100',
@@ -130,10 +132,16 @@ export default {
       }
     }
   },
+  head() {
+    return {
+      title: this.title,
+    }
+  },
   computed: {
     title() {
-      if ((!!this.$store.getters['control/course'].courseName && !this.form.title) || this.$store.getters['control/course'].courseName !== this.form.title) {
-        this.form.title = this.$store.getters['control/course'].courseName
+      if (!!this.$store.getters['control/course'].courseName && !this.form.title && this.form.titleNeedUpdate) {
+        this.form.title = Object.assign(this.$store.getters['control/course'].courseName)
+        this.form.titleNeedUpdate = false
       }
       return this.$store.getters['control/course'].courseName
     },
@@ -152,6 +160,11 @@ export default {
         `control/courses/${this.$route.params.course_id}`,
         {
           name: this.form.title
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
         }
       ).then(() => {
         this.$nuxt.refresh()
@@ -163,7 +176,12 @@ export default {
     },
     async deleteCourse() {
       await this.$axios.$delete(
-        `control/courses/${this.$route.params.course_id}`
+        `control/courses/${this.$route.params.course_id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
+        }
       ).then(() => {
         this.$router.push('/control_panel/courses')
       }).catch((err) => {

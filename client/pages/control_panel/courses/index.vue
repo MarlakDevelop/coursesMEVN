@@ -55,8 +55,9 @@
 <script>
 export default {
   name: "index",
+  middleware: ['auth'],
   async fetch({ store, error }) {
-    await store.dispatch('control/loadCourses', {error})
+    await store.dispatch('control/loadCourses', {error, store})
   },
   data() {
     return {
@@ -69,6 +70,11 @@ export default {
         ]
       },
       search: ''
+    }
+  },
+  head() {
+    return {
+      title: 'Курсы',
     }
   },
   computed: {

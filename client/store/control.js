@@ -92,42 +92,77 @@ export const mutations = {
 }
 
 export const actions = {
-  async loadUsers({commit}, {error}) {
+  async loadUsers({commit}, {store, error}) {
     try {
-      const data = await this.$axios.$get(`control/users`)
+      const data = await this.$axios.$get(
+        `control/users`,
+        {
+          headers: {
+            'Authorization': `Bearer ${store?.getters['token']}`
+          }
+        }
+      )
       commit('setUsers', data)
     } catch(e) {
       error(e)
     }
   },
-  async loadUser({commit}, {userId, error}) {
+  async loadUser({commit}, {userId, store, error}) {
     try {
-      const data = await this.$axios.$get(`control/users/${userId}`)
+      const data = await this.$axios.$get(
+        `control/users/${userId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${store?.getters['token']}`
+          }
+        }
+      )
       commit('setUser', data)
     } catch(e) {
       error(e)
     }
   },
-  async loadCourses({commit}, {error}) {
+  async loadCourses({commit}, {store, error}) {
     try {
-      const data = await this.$axios.$get(`control/courses`)
+      const data = await this.$axios.$get(
+        `control/courses`,
+        {
+          headers: {
+            'Authorization': `Bearer ${store?.getters['token']}`
+          }
+        }
+      )
       commit('setCourses', data)
     } catch(e) {
       error(e)
     }
   },
-  async loadCourse({commit}, {courseId, error}) {
+  async loadCourse({commit}, {courseId, store, error}) {
     try {
-      const data = await this.$axios.$get(`control/courses/${courseId}`)
+      const data = await this.$axios.$get(
+        `control/courses/${courseId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${store?.getters['token']}`
+          }
+        }
+      )
       commit('setCourse', data)
       commit('setLessons', data['lessons'])
     } catch(e) {
       error(e)
     }
   },
-  async loadLesson({commit}, {courseId, lessonId, error}) {
+  async loadLesson({commit}, {courseId, lessonId, store, error}) {
     try {
-      const data = await this.$axios.$get(`control/courses/${courseId}/lessons/${lessonId}`)
+      const data = await this.$axios.$get(
+        `control/courses/${courseId}/lessons/${lessonId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${store?.getters['token']}`
+          }
+        }
+      )
       commit('setLesson', data)
       commit('setTasks', data['tasks'])
       commit('setMaterials', data['materials'])
@@ -135,49 +170,91 @@ export const actions = {
       error(e)
     }
   },
-  async loadTask({commit}, {courseId, lessonId, taskId, error}) {
+  async loadTask({commit}, {courseId, lessonId, taskId, store, error}) {
     try {
-      const data = await this.$axios.$get(`control/courses/${courseId}/lessons/${lessonId}/tasks/${taskId}`)
+      const data = await this.$axios.$get(
+        `control/courses/${courseId}/lessons/${lessonId}/tasks/${taskId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${store?.getters['token']}`
+          }
+        }
+      )
       commit('setTask', data)
     } catch (e) {
       error(e)
     }
   },
-  async loadMaterial({commit}, {courseId, lessonId, materialId, error}) {
+  async loadMaterial({commit}, {courseId, lessonId, materialId, store, error}) {
     try {
-      const data = await this.$axios.$get(`control/courses/${courseId}/lessons/${lessonId}/materials/${materialId}`)
+      const data = await this.$axios.$get(
+        `control/courses/${courseId}/lessons/${lessonId}/materials/${materialId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${store?.getters['token']}`
+          }
+        }
+      )
       commit('setMaterial', data)
     } catch (e) {
       error(e)
     }
   },
-  async loadGroups({commit}, {error}) {
+  async loadGroups({commit}, {store, error}) {
     try {
-      const data = await this.$axios.$get(`control/groups`)
+      const data = await this.$axios.$get(
+        `control/groups`,
+        {
+          headers: {
+            'Authorization': `Bearer ${store?.getters['token']}`
+          }
+        }
+      )
       commit('setGroups', data)
     } catch (e) {
       error(e)
     }
   },
-  async loadGroup({commit}, {groupId, error}) {
+  async loadGroup({commit}, {groupId, store, error}) {
     try {
-      const data = await this.$axios.$get(`control/groups/${groupId}`)
+      const data = await this.$axios.$get(
+        `control/groups/${groupId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${store?.getters['token']}`
+          }
+        }
+      )
       commit('setGroup', data)
     } catch (e) {
       error(e)
     }
   },
-  async loadUsersExcludeTeacher({commit}, {groupId, error}) {
+  async loadUsersExcludeTeacher({commit}, {groupId, store, error}) {
     try {
-      const data = await this.$axios.$get(`control/groups/${groupId}/users_exclude_teacher`)
+      const data = await this.$axios.$get(
+        `control/groups/${groupId}/users_exclude_teacher`,
+        {
+          headers: {
+            'Authorization': `Bearer ${store?.getters['token']}`
+          }
+        }
+      )
       commit('setUsers', data)
     } catch (e) {
       error(e)
     }
   },
-  async loadUsersExcludeStudents({commit}, {groupId, error}) {
+  async loadUsersExcludeStudents({commit}, {groupId, store, error}) {
     try {
-      const data = await this.$axios.$get(`control/groups/${groupId}/users_exclude_students`)
+      const data = await this.$axios.$get(
+        `control/groups/${groupId}/users_exclude_students`,
+        {
+          headers: {
+            'Authorization': `Bearer ${store?.getters['token']}`
+          }
+        }
+      )
       commit('setUsers', data)
     } catch (e) {
       error(e)

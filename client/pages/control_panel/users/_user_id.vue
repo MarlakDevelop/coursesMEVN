@@ -89,8 +89,9 @@
 <script>
 export default {
   name: "index",
+  middleware: ['auth'],
   async fetch({ store, route, error }){
-    await store.dispatch('control/loadUser', { userId: route.params.user_id, error })
+    await store.dispatch('control/loadUser', { userId: route.params.user_id, error, store })
   },
   data() {
     return {
@@ -100,32 +101,42 @@ export default {
         text: ''
       },
       form: {
+        needUpdate: true,
         valid: false,
-        login: 'user',
+        login: '',
         loginRules: [
           v => v.length <= 32 || 'Логин должен быть короче 32',
         ],
+        loginNeedUpdate: true,
         password: '',
         passwordRules: [
           v => v.length <= 32 || 'Пароль должен быть короче 32',
         ],
-        fullName: 'Гурин Аркадий',
+        fullName: '',
         fullNameRules: [
           v => v.length <= 100 || 'Полное имя должно быть короче 100',
-        ]
+        ],
+        fullNameNeedUpdate: true,
       }
+    }
+  },
+  head() {
+    return {
+      title: this.login,
     }
   },
   computed: {
     login() {
-      if ((!!this.$store.getters['control/user'].login && !this.form.login) || this.$store.getters['control/users'].login !== this.form.login) {
-        this.form.login = this.$store.getters['control/user'].login
+      if (!!this.$store.getters['control/user'].login && !this.form.login && this.form.loginNeedUpdate) {
+        this.form.login = Object.assign(this.$store.getters['control/user'].login)
+        this.form.loginNeedUpdate = false
       }
       return this.$store.getters['control/user'].login
     },
     fullName() {
-      if ((!!this.$store.getters['control/user'].fullName && !this.form.fullName) || this.$store.getters['control/users'].fullName !== this.form.fullName) {
-        this.form.fullName = this.$store.getters['control/user'].fullName
+      if (!!this.$store.getters['control/user'].fullName && !this.form.fullName && this.form.fullNameNeedUpdate) {
+        this.form.fullName = Object.assign(this.$store.getters['control/user'].fullName)
+        this.form.fullNameNeedUpdate = false
       }
       return this.$store.getters['control/user'].fullName
     }
@@ -138,6 +149,11 @@ export default {
           login: this.form.login,
           fullName: this.form.fullName,
           password: this.form.password
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
         }
       ).then(() => {
         this.$nuxt.refresh()
@@ -149,7 +165,12 @@ export default {
     },
     async deleteUser() {
       await this.$axios.$delete(
-        `control/users/${this.$route.params.user_id}`
+        `control/users/${this.$route.params.user_id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
+        }
       ).then(() => {
         this.$router.push('/control_panel/users')
       }).catch((err) => {

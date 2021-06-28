@@ -58,8 +58,14 @@
 <script>
 export default {
   name: "index",
+  middleware: ['auth'],
   async fetch({ store, error }){
-    await store.dispatch('control/loadUsers', { error })
+    await store.dispatch('control/loadUsers', { error, store })
+  },
+  head() {
+    return {
+      title: 'Пользователи',
+    }
   },
   data() {
     return {

@@ -4,9 +4,8 @@ const schema = new Schema({
   login: {type: String, required: true, unique: true},
   password: {type: String, required: true},
   fullName: {type: String, required: true},
-  isController: {type: Boolean, required: true},
-  students: [{type: Types.ObjectId, ref: 'Student'}],
-  groups: [{type: Types.ObjectId, ref: 'Group'}],
+  isController: {type: Boolean, default: false},
+  passwordChanged: {type: Date, default: Date.now}
 })
 
 module.exports = model('User', schema)

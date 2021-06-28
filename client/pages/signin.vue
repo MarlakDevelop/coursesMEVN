@@ -60,6 +60,7 @@
 <script>
 export default {
   name: "signin",
+  middleware: ['notAuth'],
   layout: 'auth',
   data() {
     return {
@@ -83,6 +84,11 @@ export default {
       }
     }
   },
+  head() {
+    return {
+      title: 'Авторизация',
+    }
+  },
   methods: {
     async signIn() {
       await this.$axios.$post(
@@ -92,7 +98,9 @@ export default {
           password: this.form.password
         }
       ).then((res) => {
+        const Cookie = process.client ? require('js-cookie') : undefined
         this.$store.dispatch('login', { token: res.token })
+        Cookie.set('token', res.token)
         this.$router.push('/')
       }).catch((err) => {
         this.dialog.title = 'Ошибка'

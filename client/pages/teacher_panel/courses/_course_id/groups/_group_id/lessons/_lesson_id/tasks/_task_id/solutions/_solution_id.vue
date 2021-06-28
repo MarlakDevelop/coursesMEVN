@@ -162,7 +162,7 @@
             </v-toolbar>
             <client-only v-if="code">
               <codemirror
-                v-model="code"
+                :value="code"
                 :options="cmOptions"
               />
             </client-only>
@@ -177,7 +177,7 @@
                 </div>
                 <a
                   class="grey--text text-body d-block"
-                  href="#"
+                  :href="filePath"
                 >
                   Скачать решение
                 </a>
@@ -251,6 +251,7 @@
                       link
                       label
                       @click="openSubSolution(item.id)"
+                      :disabled="String(item.id) === String(subSolution.id)"
                     >
                       <div class="text-truncate">
                         ID {{ item.id }}
@@ -296,10 +297,11 @@
 
 export default {
   name: "_task_id",
+  middleware: ['auth'],
   async fetch({ store, route, error }){
-    await store.dispatch('teacher/loadTask', { courseId: route.params.course_id, groupId: route.params.group_id, lessonId: route.params.lesson_id, taskId: route.params.task_id, error })
-    await store.dispatch('teacher/loadSolution', { courseId: route.params.course_id, groupId: route.params.group_id, lessonId: route.params.lesson_id, taskId: route.params.task_id, solutionId: route.params.solution_id, error })
-    await store.dispatch('teacher/loadSolutionHistory', { courseId: route.params.course_id, groupId: route.params.group_id, lessonId: route.params.lesson_id, taskId: route.params.task_id, solutionId: route.params.solution_id, error })
+    await store.dispatch('teacher/loadTask', { courseId: route.params.course_id, groupId: route.params.group_id, lessonId: route.params.lesson_id, taskId: route.params.task_id, error, store })
+    await store.dispatch('teacher/loadSolution', { courseId: route.params.course_id, groupId: route.params.group_id, lessonId: route.params.lesson_id, taskId: route.params.task_id, solutionId: route.params.solution_id, error, store })
+    await store.dispatch('teacher/loadSolutionHistory', { courseId: route.params.course_id, groupId: route.params.group_id, lessonId: route.params.lesson_id, taskId: route.params.task_id, solutionId: route.params.solution_id, error, store })
   },
   data() {
     return {
@@ -323,6 +325,11 @@ export default {
           v => v.length <= 1000 || 'Название должно быть короче 1000',
         ],
       }
+    }
+  },
+  head() {
+    return {
+      title: this.title,
     }
   },
   computed: {
@@ -368,7 +375,6 @@ export default {
       }
     },
     history() {
-
       return this.$store.getters['teacher/solution'].history.map((elem) => {
         return {
           ...elem,
@@ -386,19 +392,20 @@ export default {
         taskId: this.$route.params.task_id,
         solutionId: this.$route.params.solution_id,
         subSolutionId: id,
-        error: this.$nuxt.error
+        error: this.$nuxt.error, store: this.$store
       })
     },
     async openVerdict(id) {
-      await this.$store.dispatch('teacher/loadVerdict', {
-        courseId: this.$route.params.course_id,
-        groupId: this.$route.params.group_id,
-        lessonId: this.$route.params.lesson_id,
-        taskId: this.$route.params.task_id,
-        solutionId: this.$route.params.solution_id,
-        verdictId: id,
-        error: this.$nuxt.error
-      })
+      if (String(this.verdict.id) !== String(id))
+        await this.$store.dispatch('teacher/loadVerdict', {
+          courseId: this.$route.params.course_id,
+          groupId: this.$route.params.group_id,
+          lessonId: this.$route.params.lesson_id,
+          taskId: this.$route.params.task_id,
+          solutionId: this.$route.params.solution_id,
+          verdictId: id,
+          error: this.$nuxt.error, store: this.$store
+        })
       this.verdictIsVisible = true
     },
     async sendVerdict(status) {
@@ -408,6 +415,11 @@ export default {
           name: this.verdictForm.title,
           comment: this.verdictForm.comment,
           status,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
         }
       ).then(() => {
         this.$nuxt.refresh()

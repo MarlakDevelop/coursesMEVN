@@ -87,8 +87,9 @@
 <script>
 export default {
   name: "update_teacher",
+  middleware: ['auth'],
   async fetch({store, route, error}) {
-    await store.dispatch('control/loadUsersExcludeTeacher', {groupId: route.params.group_id, error})
+    await store.dispatch('control/loadUsersExcludeTeacher', {groupId: route.params.group_id, error, store})
   },
   data() {
     return {
@@ -100,6 +101,11 @@ export default {
       search: ''
     }
   },
+  head() {
+    return {
+      title: 'Обновить учителя',
+    }
+  },
   computed: {
     users() {
       return this.$store.getters['control/users']
@@ -108,12 +114,17 @@ export default {
   methods: {
     async setTeacher(userId) {
       await this.$axios.$post(
-        `/control_panel/groups/${this.$route.params.group_id}/set_teacher`,
+        `/control/groups/${this.$route.params.group_id}/set_teacher`,
         {
           userId
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
         }
       ).then(() => {
-        this.$router.push(`control/groups/${this.$route.params.group_id}`)
+        this.$router.push(`/control_panel/groups/${this.$route.params.group_id}`)
       }).catch((err) => {
         this.dialog.title = 'Ошибка'
         this.dialog.text = err.response.data.message

@@ -55,12 +55,18 @@
 <script>
 export default {
   name: "index",
+  middleware: ['auth'],
   async fetch({store, error}) {
-    await store.dispatch('control/loadGroups', {error})
+    await store.dispatch('control/loadGroups', {error, store})
   },
   data() {
     return {
       search: ''
+    }
+  },
+  head() {
+    return {
+      title: 'Группы',
     }
   },
   computed: {

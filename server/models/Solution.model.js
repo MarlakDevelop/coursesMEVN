@@ -2,11 +2,12 @@ const {Schema, model, Types} = require('mongoose')
 
 const schema = new Schema({
   status: {type: String, required: true},
-  student: {type: Types.ObjectId, required: true},
-  lastStatus: {type: Date, default: Date.now},
+  statusDate: {type: Date, default: Date.now},
+  group: {type: Types.ObjectId, required: true, ref: 'Group'},
+  user: {type: Types.ObjectId, required: true, ref: 'User'},
+  course: {type: Types.ObjectId, required: true, ref: 'Course'},
+  lesson: {type: Types.ObjectId, required: true, ref: 'Lesson'},
   task: {type: Types.ObjectId, required: true, ref: 'Task'},
-  verdicts: [{type: Types.ObjectId, ref: 'Verdict'}],
-  subSolutions: [{type: Types.ObjectId, ref: 'SubSolution'}]
 })
 
 module.exports = model('Solution', schema)

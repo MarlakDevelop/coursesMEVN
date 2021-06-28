@@ -78,6 +78,7 @@
 </template>
 <script>
 export default {
+  middleware: ['auth'],
   data() {
     return {
       dialog: {
@@ -103,6 +104,11 @@ export default {
       },
     }
   },
+  head() {
+    return {
+      title: 'Создание задачи',
+    }
+  },
   methods: {
     async createTask() {
       await this.$axios.post(
@@ -110,6 +116,11 @@ export default {
         {
           name: this.form.title,
           body: this.form.body
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.$store.getters['token']}`
+          }
         }
       ).then(() => {
         this.dialog.title = 'Успех'
