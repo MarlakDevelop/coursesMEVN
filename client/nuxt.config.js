@@ -49,7 +49,7 @@ export default {
 
   // Axios module configuration: https://go.nuxtjs.dev/config-axios
   axios: {
-    baseURL: 'https://coursesfromanonymous.ru/api/v1/',
+    baseURL: 'http://94.228.121.229:5000/api/v1/',
     withCredentials: true
   },
 
